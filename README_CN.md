@@ -51,7 +51,7 @@ AirCanvas 是一套完整、以本機為優先（local-first）的手勢互動�
 - 網路攝影機為選用項目：請使用**模擬影像饋送（Simulated feed）**。
 - 需連網一次，以安裝相依套件並下載 7.8 MB 的 MediaPipe 模型。此儲存庫已內附該模型於 `aircanvas/assets/hand_landmarker.task`。
 
-### 建立並啟用虛擬環境
+### 建立並啟用虛擬環境 (不建議用)
 
 使用 `uv`（建議方式，本次建置即以此建立）。如果 PowerShell 阻擋啟用，請先允許目前程序執行：
 
@@ -60,7 +60,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
 
 ```powershell
-uv venv --python 3.13 .venv
+uv venv --python 3.15 .venv
 .\.venv\Scripts\Activate.ps1
 uv pip install --python .\.venv\Scripts\python.exe -r requirements.txt
 ```
@@ -68,7 +68,7 @@ uv pip install --python .\.venv\Scripts\python.exe -r requirements.txt
 使用標準 Python：
 
 ```powershell
-py -3.13 -m venv .venv
+py -3.15 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
