@@ -77,9 +77,13 @@ The desktop `CameraPipeline` captures and processes on background threads. A 33 
 | File | Responsibility |
 | --- | --- |
 | `web/server.py` | FastAPI app, HTTP endpoints, WebSocket session, origin/CSP protections, frame decode, demo scheduling, per-client `InteractionSession` |
-| `web/static/index.html` | Semantic layout, accessible controls, inline SVG icon sprite, welcome/help/security dialogs |
-| `web/static/styles.css` | Responsive warm-dark design system, drawers for small screens, focus states, reduced-motion support |
-| `web/static/app.js` | Camera capture, WebSocket client, canvas renderer, control binding, keyboard shortcuts, export. No recognition logic. |
+| `web/static/index.html` | Semantic shell, accessible controls, inline SVG icon sprite, welcome/help/security dialogs |
+| `web/static/app.js` | Thin entrypoint: initialization, WebSocket connection, event bindings, keyboard shortcuts and cleanup |
+| `web/static/src/core/` | Constants, state store, DOM/UI primitives, transport bridge, pure helpers |
+| `web/static/src/render/` | Canvas 2D stage, hand preview and PNG export; no recognition logic |
+| `web/static/src/features/` | Camera/demo capture, config sync and snapshot view-model |
+| `web/static/src/ui/` | Mode/tool presentation and toolbar state |
+| `web/static/styles/` | Split design system: base, layout, stage, inspector, components and responsive rules |
 
 The browser is responsible for camera capture because `getUserMedia` belongs to the client. It mirrors frames in a capture canvas when the mirror setting is enabled, so the JPEG coordinates sent to Python match what the user sees. The backend returns only semantic state; annotated drawings are re-rendered in the browser from that state, keeping strokes vector-sharp.
 

@@ -228,6 +228,8 @@ Key boundaries:
 - **FastAPI/JS** owns browser camera capture and canvas rendering; it sends semantic commands and receives state. It never duplicates CV logic.
 - The full web protocol is documented in [ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+The browser UI follows a small Vue-style, no-build structure: `core/` (state, constants, DOM bridge), `features/` (camera, config, snapshot view-model), `render/` (Canvas 2D stage and hand preview), `ui/` (mode/tool presentation), and a thin `app.js` shell. CSS is split by concern under `styles/`.
+
 A short tour of the source tree:
 
 ```
@@ -239,11 +241,13 @@ aircanvas/
 ├── shapes.py          loop recognition, circle fit, selection detector
 ├── tracking.py        CSRT + appearance guard + recovery + FOV state machine
 ├── session.py         shared orchestration, events, snapshots
+├── hand_models.py     selectable MediaPipe / RTMPose / YOLO backends
 ├── config.py          validated JSON-serialisable configuration
 ├── native.py          Windows cursor / click / keyboard bridge
 ├── demo.py            deterministic labelled simulated camera
 ├── desktop/           PySide6 interface (stage, widgets, overlay, dialogs)
 └── web/               FastAPI service + static HTML/CSS/JS interface
+    └── static/        index.html · app.js entry · src/{core,features,render,ui} · styles/
 aircanvas/assets/hand_landmarker.task
 tests/                 52 automated tests
 docs/                  architecture, gesture map, comparison, testing, screenshots

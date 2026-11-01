@@ -63,9 +63,9 @@ Expected result:
 ### 2.3 Static checks
 
 ```powershell
-.\.venv\Scripts\ruff.exe check aircanvas tests scripts run_desktop.py run_web.py
+ruff check aircanvas tests scripts run_desktop.py run_web.py
 python -m compileall -q aircanvas scripts
-node --check aircanvas\web\static\app.js
+Get-ChildItem aircanvas\web\static -Recurse -Filter *.js | ForEach-Object { node --check $_.FullName }
 ```
 
 Ruff's remaining deliberate findings are limited to broad exception guards around best-effort native operations, deliberate `except: pass` cleanup paths, and `str, Enum` classes kept for Python 3.10 compatibility. These are documented rather than silenced everywhere.
@@ -178,6 +178,7 @@ A marker should perform these checks on a machine with a webcam. Use `--demo` wh
 - [ ] Simulated feed works without camera; stage marked SIMULATED.
 - [ ] Camera/mirror setting aligns the video, hand skeleton, pointer and annotations.
 - [ ] Device selector lists cameras after permission.
+- [ ] Leave the camera running for at least 10 seconds: the video/stage stays visible, the WebSocket remains connected, and no page error appears.
 - [ ] Reloading keeps the service clean; no camera data is written to disk.
 
 ### 3.7 Web: drawing and controls

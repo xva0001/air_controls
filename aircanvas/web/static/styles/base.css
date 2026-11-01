@@ -1,0 +1,65 @@
+/* AirCanvas browser interface — warm editorial dark theme shared with the desktop app. */
+:root {
+  --bg: #100f0e;
+  --bg-soft: #151311;
+  --surface: #181614;
+  --surface-raised: #201d1a;
+  --surface-soft: #26221e;
+  --border: #332f29;
+  --border-soft: #28241f;
+  --text: #f4efe5;
+  --text-dim: #c9c1b5;
+  --muted: #948b7e;
+  --faint: #6d655b;
+  --coral: #f07157;
+  --coral-2: #ff987f;
+  --mint: #74d7b6;
+  --amber: #f3c45d;
+  --sky: #64a9e5;
+  --violet: #c79bff;
+  --danger: #ed6a6a;
+  --paper: #f0ebe1;
+  --paper-2: #e7e0d4;
+  --ink: #2c2924;
+  --radius: 16px;
+  --shadow: 0 24px 70px rgba(0, 0, 0, .38);
+  --font: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "Cascadia Mono", "Consolas", "SFMono-Regular", monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  background:
+    radial-gradient(900px 500px at 85% -10%, rgba(240, 113, 87, .08), transparent 70%),
+    radial-gradient(700px 600px at -5% 110%, rgba(116, 215, 182, .055), transparent 70%),
+    var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+a { color: var(--mint); text-decoration: none; }
+a:hover { text-decoration: underline; }
+::selection { background: rgba(240, 113, 87, .35); }
+:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+.hidden-video { position: fixed; left: -10000px; top: 0; width: 2px; height: 2px; opacity: 0; pointer-events: none; }
+
+.icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
+.icon.tiny { width: 12px; height: 12px; stroke-width: 2; }
+.skip-link {
+  position: fixed; left: 12px; top: -60px; z-index: 200;
+  padding: 10px 14px; border-radius: 8px; background: var(--coral); color: #2a110b;
+  font-weight: 700; transition: top .15s ease;
+}
+.skip-link:focus { top: 12px; }
+
+.app-shell { display: flex; height: 100vh; height: 100dvh; flex-direction: column; }
+

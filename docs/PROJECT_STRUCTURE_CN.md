@@ -42,9 +42,14 @@ air_controls/
 │       ├── __init__.py
 │       ├── server.py              # FastAPI、WebSocket、安全性、示範迴圈
 │       └── static/
-│           ├── index.html         # 語意化介面與對話框
-│           ├── styles.css         # 響應式設計系統
-│           ├── app.js             # 瀏覽器攝影機、狀態、Canvas 2D 渲染器
+│           ├── index.html         # 語意化外殼與對話框
+│           ├── app.js             # 精簡入口：初始化、WebSocket、事件綁定
+│           ├── src/
+│           │   ├── core/          # 常數、state、DOM 輔助、bridge、工具
+│           │   ├── features/      # 相機＋示範、設定、snapshot view-model
+│           │   ├── render/        # Canvas 2D 舞台 + 手部預覽
+│           │   └── ui/            # 模式／工具呈現
+│           ├── styles/            # base、layout、stage、inspector、components、responsive
 │           └── favicon.svg
 ├── tests/
 │   ├── conftest.py
@@ -99,13 +104,13 @@ air_controls/
 | 新增/調整姿勢 | `aircanvas/gestures.py`（`classify_hand`）+ `config.GESTURE_POSES` | desktop/widgets 或 app.js |
 | 變更手勢角色/預設值 | `aircanvas/config.py`（`GestureSettings`）與 `docs/GESTURE_MAP.md` | 僅限介面的程式碼 |
 | 調整導覽 | `aircanvas/mapping.py`（`NavigationController`） | 桌面版/JS 計時器 |
-| 新增形狀 | `aircanvas/shapes.py` + `desktop/stage.py` 與 `web/static/app.js` 的渲染分支 | 在 JS 中進行辨識 |
+| 新增形狀 | `aircanvas/shapes.py` + `desktop/stage.py` 與 `web/static/src/render/stage.js` 的渲染分支 | 在 JS 中進行辨識 |
 | 變更追蹤器策略 | `aircanvas/tracking.py`（`TrackerParams`） | 介面程式碼 |
 | 新增繪圖操作 | `aircanvas/drawing.py` + 一個桌面/網頁動作綁定 | 重複的筆畫演算法 |
 | 變更狀態結構（schema） | `aircanvas/session.py`（`snapshot`）+ 兩個渲染器 | 協定變體 |
 | 新增原生作業系統動作 | `aircanvas/native.py` + 桌面事件路由；絕不對網頁暴露 | app.js |
 | 新增網頁端點/訊息 | `aircanvas/web/server.py` + `app.js` 用戶端 | 桌面版 |
-| 變更視覺變數 | `desktop/theme.py` 與 `web/static/styles.css`（兩者保持同步） | 各元件寫死的數值 |
+| 變更視覺變數 | `desktop/theme.py` 與 `web/static/styles/base.css`（兩者保持同步） | 各元件寫死的數值 |
 | 重新產生螢幕截圖 | `scripts/capture_desktop.py`、`scripts/capture_web.py` | 手動裁切 |
 | 重新產生架構圖 | `scripts/generate_architecture.py` | 僅以手動編輯架構圖 |
 

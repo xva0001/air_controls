@@ -42,9 +42,14 @@ air_controls/
 │       ├── __init__.py
 │       ├── server.py              # FastAPI, WebSocket, security, demo loop
 │       └── static/
-│           ├── index.html         # semantic UI and dialogs
-│           ├── styles.css         # responsive design system
-│           ├── app.js             # browser camera, state, Canvas 2D renderer
+│           ├── index.html         # semantic shell and dialogs
+│           ├── app.js             # thin entry: init, WebSocket, bindings
+│           ├── src/
+│           │   ├── core/          # constants, state, DOM helpers, bridge, utils
+│           │   ├── features/      # camera+demo, config, snapshot view-model
+│           │   ├── render/        # Canvas 2D stage + hand preview
+│           │   └── ui/            # mode/tool presentation
+│           ├── styles/            # base, layout, stage, inspector, components, responsive
 │           └── favicon.svg
 ├── tests/
 │   ├── conftest.py
@@ -99,13 +104,13 @@ Runtime caches (`.venv/`, `.uv-cache/`, `.cache/`, browser profiles, downloaded 
 | Add/alter a pose | `aircanvas/gestures.py` (`classify_hand`) + `config.GESTURE_POSES` | desktop/widgets or app.js |
 | Change a gesture role/default | `aircanvas/config.py` (`GestureSettings`) and `docs/GESTURE_MAP.md` | UI-only code |
 | Tune navigation | `aircanvas/mapping.py` (`NavigationController`) | Desktop/JS timers |
-| Add a shape | `aircanvas/shapes.py` + renderer branch in `desktop/stage.py` and `web/static/app.js` | Recognition in JS |
+| Add a shape | `aircanvas/shapes.py` + renderer branch in `desktop/stage.py` and `web/static/src/render/stage.js` | Recognition in JS |
 | Change tracker policy | `aircanvas/tracking.py` (`TrackerParams`) | UI code |
 | Add a drawing operation | `aircanvas/drawing.py` + one desktop/web action binding | Duplicate stroke algorithms |
 | Change state schema | `aircanvas/session.py` (`snapshot`) + both renderers | Protocol variants |
 | Add a native OS action | `aircanvas/native.py` + desktop event routing; never expose to web | app.js |
 | Add a web endpoint/message | `aircanvas/web/server.py` + `app.js` client | Desktop |
-| Change visual tokens | `desktop/theme.py` and `web/static/styles.css` (keep in sync) | Hard-coded per-widget values |
+| Change visual tokens | `desktop/theme.py` and `web/static/styles/base.css` (keep in sync) | Hard-coded per-widget values |
 | Regenerate screenshots | `scripts/capture_desktop.py`, `scripts/capture_web.py` | Manual crops |
 | Regenerate diagram | `scripts/generate_architecture.py` | Diagram editing only |
 

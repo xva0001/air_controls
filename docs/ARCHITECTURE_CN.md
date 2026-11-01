@@ -77,9 +77,13 @@ AirCanvas 有一條凌駕於便利性之上的規則：**辨識、對應、繪�
 | 檔案 | 職責 |
 | --- | --- |
 | `web/server.py` | FastAPI 應用程式、HTTP 端點、WebSocket session、來源（origin）／CSP 防護、影格解碼、示範排程、每個用戶端各自的 `InteractionSession` |
-| `web/static/index.html` | 語義化版面、無障礙控制項、內嵌 SVG 圖示精靈圖（sprite）、歡迎／說明／安全性對話框 |
-| `web/static/styles.css` | 響應式暖色深色設計系統、小螢幕用的抽屜面板、焦點狀態、支援減少動態效果（reduced-motion） |
-| `web/static/app.js` | 攝影機擷取、WebSocket 用戶端、畫布渲染器、控制項綁定、鍵盤快速鍵、匯出。不含任何辨識邏輯。 |
+| `web/static/index.html` | 語義化外殼、無障礙控制項、內嵌 SVG 圖示精靈圖（sprite）、歡迎／說明／安全性對話框 |
+| `web/static/app.js` | 精簡入口：初始化、WebSocket 連線、事件綁定、鍵盤快速鍵與清理 |
+| `web/static/src/core/` | 常數、state、DOM／UI 原語、傳輸 bridge、純輔助函式 |
+| `web/static/src/render/` | Canvas 2D 舞台、手部預覽與 PNG 匯出；不含辨識邏輯 |
+| `web/static/src/features/` | 相機／示範擷取、設定同步、snapshot view-model |
+| `web/static/src/ui/` | 模式／工具呈現與工具列狀態 |
+| `web/static/styles/` | 拆分後的設計系統：base、layout、stage、inspector、components、responsive |
 
 瀏覽器負責攝影機擷取，因為 `getUserMedia` 屬於用戶端。當鏡像設定啟用時，它會在擷取畫布中對影格進行鏡像，使送往 Python 的 JPEG 座標與使用者所見一致。後端只回傳語義狀態；標註後的繪圖會由該狀態在瀏覽器中重新渲染，讓筆畫保持向量級的銳利。
 

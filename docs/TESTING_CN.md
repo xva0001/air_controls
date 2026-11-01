@@ -63,9 +63,9 @@ python -m pytest tests -q
 ### 2.3 靜態檢查
 
 ```powershell
-.\.venv\Scripts\ruff.exe check aircanvas tests scripts run_desktop.py run_web.py
+ruff check aircanvas tests scripts run_desktop.py run_web.py
 python -m compileall -q aircanvas scripts
-node --check aircanvas\web\static\app.js
+Get-ChildItem aircanvas\web\static -Recurse -Filter *.js | ForEach-Object { node --check $_.FullName }
 ```
 
 Ruff 其餘刻意保留的檢查結果僅限於：盡力而為的原生操作外層的廣泛例外防護、刻意使用 `except: pass` 的清理路徑，以及為相容 Python 3.10 而保留的 `str, Enum` 類別。這些都有文件說明，而非全面以忽略方式消音。
@@ -178,6 +178,7 @@ python scripts/smoke_global_python.py --camera
 - [ ] 沒有相機時，模擬影像來源仍可運作；舞台會標示 SIMULATED。
 - [ ] 相機/鏡像設定會對齊視訊、手部骨架、游標與標註。
 - [ ] 授權後，裝置選擇器會列出相機。
+- [ ] 讓相機持續運作至少 10 秒：視訊／舞台仍可見、WebSocket 保持連線，且沒有頁面錯誤。
 - [ ] 重新載入後服務保持乾淨；不會將相機資料寫入磁碟。
 
 ### 3.7 網頁版：繪畫與控制

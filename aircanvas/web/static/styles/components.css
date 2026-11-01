@@ -1,0 +1,90 @@
+/* ---------------------------------------------------------------- footer */
+.statusbar {
+  height: 34px; flex: 0 0 34px; display: flex; align-items: center; gap: 10px;
+  border-top: 1px solid var(--border-soft); padding: 0 17px;
+  color: var(--faint); font-size: 8.5px;
+}
+.statusbar-left { display: flex; align-items: baseline; gap: 6px; min-width: 180px; }
+.statusbar .version { font-family: var(--mono); font-size: 8px; }
+.statusbar-center { flex: 1; text-align: center; }
+.statusbar code { font-family: var(--mono); color: var(--muted); }
+.statusbar-right { min-width: 230px; text-align: right; }
+
+/* ---------------------------------------------------------------- toast */
+.toast {
+  position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 8px;
+  max-width: calc(100% - 48px); padding: 10px 14px;
+  border-radius: 11px; border: 1px solid var(--border);
+  background: rgba(29, 25, 21, .96); box-shadow: 0 14px 40px rgba(0,0,0,.4);
+  color: var(--text); font-size: 10px; line-height: 1.4; text-align: left;
+  z-index: 20; backdrop-filter: blur(8px);
+}
+.toast::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mint); flex: 0 0 auto; }
+.toast[data-tone="warning"]::before { background: var(--amber); }
+.toast[data-tone="error"]::before { background: var(--danger); }
+
+/* ---------------------------------------------------------------- buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 32px; padding: 7px 12px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface-raised); color: var(--text-dim);
+  font-size: 10px; font-weight: 650; transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.btn:hover { background: var(--surface-soft); color: var(--text); border-color: #4a4239; }
+.btn.primary { background: var(--coral); border-color: var(--coral); color: #20100c; }
+.btn.primary:hover { background: var(--coral-2); border-color: var(--coral-2); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+.btn.ghost:hover { background: var(--surface-raised); border-color: var(--border); color: var(--text); }
+.btn .icon { width: 14px; height: 14px; }
+
+/* ---------------------------------------------------------------- modals */
+.modal {
+  border: 0; padding: 0; background: transparent; color: var(--text);
+  max-width: calc(100vw - 28px); max-height: calc(100vh - 28px);
+}
+.modal::backdrop { background: rgba(5, 4, 3, .72); backdrop-filter: blur(6px); }
+.modal-card {
+  width: min(790px, calc(100vw - 28px)); max-height: calc(100vh - 40px); overflow-y: auto;
+  border-radius: 20px; border: 1px solid var(--border);
+  background: var(--surface); box-shadow: 0 30px 100px rgba(0,0,0,.6);
+  padding: 28px 31px;
+}
+.modal-card.help { width: min(720px, calc(100vw - 28px)); }
+.modal-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+.modal h2 { font-size: 26px; line-height: 1.05; letter-spacing: -.6px; margin-top: 8px; }
+.modal .lede { margin: 9px 0 16px; max-width: 660px; color: var(--text-dim); font-size: 11px; line-height: 1.55; }
+.welcome-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin: 15px 0; }
+.welcome-card {
+  border: 1px solid var(--border-soft); border-radius: 11px; background: var(--surface-raised);
+  padding: 13px; display: flex; flex-direction: column; gap: 5px;
+}
+.welcome-card strong { font-size: 11px; }
+.welcome-card p { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.badge {
+  width: 29px; height: 29px; border-radius: 8px; border: 1px solid #40382f;
+  background: #231f1a; display: grid; place-items: center; color: var(--mint);
+}
+.badge.coral { color: var(--coral); }
+.badge.mint { color: var(--mint); }
+.badge.amber { color: var(--amber); }
+.badge.blue { color: var(--sky); }
+.badge .icon { width: 15px; height: 15px; }
+.privacy { display: flex; align-items: center; gap: 7px; margin: 9px 0 15px; color: var(--faint); font-size: 9px; }
+.privacy .dot.mint { background: var(--mint); }
+.welcome-actions, .modal-actions { display: flex; justify-content: flex-end; gap: 7px; flex-wrap: wrap; }
+.welcome-actions .btn:nth-child(1) { margin-right: auto; }
+.fineprint { margin: 12px 0 0; color: var(--faint); font-size: 8.5px; line-height: 1.5; }
+.help-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin: 14px 0; }
+.help-grid .welcome-card { padding: 11px; }
+.help-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
+.help-columns section { border-top: 1px solid var(--border-soft); padding-top: 9px; }
+.help-columns h3 { color: var(--muted); font-size: 8px; letter-spacing: 1.3px; margin-bottom: 7px; }
+.help-columns dl { display: grid; grid-template-columns: 82px 1fr; gap: 5px 7px; margin: 0; }
+.help-columns dt { font-family: var(--mono); color: var(--text-dim); font-size: 9px; }
+.help-columns dd { margin: 0; color: var(--muted); font-size: 9px; }
+.help-columns ul { margin: 0; padding-left: 15px; color: var(--muted); font-size: 9px; line-height: 1.6; }
+.security-list { color: var(--text-dim); font-size: 10.5px; line-height: 1.6; padding-left: 17px; }
+.security-list li { margin-bottom: 7px; }
+.security-list code { font-family: var(--mono); font-size: 9px; color: var(--mint); }
+

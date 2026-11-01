@@ -228,6 +228,8 @@ python -m pytest tests -q
 - **FastAPI/JS** 負責瀏覽器攝影機擷取與畫布渲染；它送出語意化指令並接收狀態，絕不重複實作電腦視覺（CV）邏輯。
 - 完整的網頁協定記錄於 [ARCHITECTURE_CN.md](docs/ARCHITECTURE_CN.md)。
 
+瀏覽器 UI 採用小型 Vue 風格、無需建置的結構：`core/`（state、常數、DOM bridge）、`features/`（相機、設定、snapshot view-model）、`render/`（Canvas 2D 舞台與手部預覽）、`ui/`（模式／工具呈現），以及精簡的 `app.js` 外殼。CSS 依職責拆分於 `styles/`。
+
 原始碼樹簡介：
 
 ```
@@ -239,11 +241,13 @@ aircanvas/
 ├── shapes.py          迴圈辨識、圓擬合、選取偵測器
 ├── tracking.py        CSRT + 外觀防護 + 恢復 + 視野（FOV）狀態機
 ├── session.py         共用協調、事件、快照
+├── hand_models.py     可選的 MediaPipe / RTMPose / YOLO 後端
 ├── config.py          經驗證、可 JSON 序列化的設定
 ├── native.py          Windows 游標 / 點擊 / 鍵盤橋接
 ├── demo.py            確定性的具標籤模擬攝影機
 ├── desktop/           PySide6 介面（舞台、元件、覆蓋層、對話框）
 └── web/               FastAPI 服務 + 靜態 HTML/CSS/JS 介面
+    └── static/        index.html · app.js 入口 · src/{core,features,render,ui} · styles/
 aircanvas/assets/hand_landmarker.task
 tests/                 52 項自動化測試
 docs/                  架構、手勢對照表、比較、測試、螢幕截圖
