@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 .uv-cache/
 .cache/
+.testdeps/
 .pytest_cache/
 .ruff_cache/
 pytest-cache-files-*/

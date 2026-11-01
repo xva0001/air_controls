@@ -6,7 +6,8 @@ air_controls/
 ├── pyproject.toml
 ├── requirements.txt
 ├── requirements-dev.txt
-├── run_desktop.py                 # convenience launcher
+├── run_desktop.py                 # convenience launcher (venv or global)
+├── run_desktop_global.cmd         # launch with global Python (camera-verified path)
 ├── run_web.py                     # convenience launcher
 ├── aircanvas/
 │   ├── __init__.py
@@ -18,6 +19,7 @@ air_controls/
 │   ├── models.py                  # Hand/Gesture/Stroke/Marker/Event models
 │   ├── gestures.py                # HandTracker, pose rules, stabiliser
 │   ├── mapping.py                 # GestureMapper, NavigationController, MouseController
+│   ├── hand_models.py             # MediaPipe / RTMPose / YOLO backend registry
 │   ├── drawing.py                 # stroke store, undo/redo, shape commit
 │   ├── shapes.py                  # circle fit, loop selection
 │   ├── tracking.py                # CSRT + appearance recovery + FOV state
@@ -46,6 +48,8 @@ air_controls/
 │           └── favicon.svg
 ├── tests/
 │   ├── conftest.py
+│   ├── test_camera.py
+│   ├── test_hand_models.py
 │   ├── test_shapes.py
 │   ├── test_gestures.py
 │   ├── test_mapping.py
@@ -55,14 +59,18 @@ air_controls/
 │   └── test_desktop_smoke.py
 ├── scripts/
 │   ├── fetch_model.py             # download model if missing
+│   ├── diagnose_camera.py         # probe camera indices/backends
+│   ├── smoke_global_python.py     # verify global Python 3.15 + Qt + MediaPipe
 │   ├── generate_architecture.py   # PNG architecture diagram
 │   ├── capture_desktop.py         # offscreen screenshots
 │   └── capture_web.py             # Playwright/CDP screenshots
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── GESTURE_MAP.md
+│   ├── HAND_MODEL_BACKENDS.md
 │   ├── INTERFACE_COMPARISON.md
 │   ├── BROWSER_LIMITATIONS.md
+│   ├── CAMERA_TROUBLESHOOTING.md
 │   ├── TESTING.md
 │   ├── USER_GUIDE.md
 │   ├── KNOWN_LIMITATIONS.md
@@ -77,6 +85,8 @@ air_controls/
 │       └── web-mobile.png
 └── data/                           # local runtime/test artifacts (gitignored)
 ```
+
+Chinese equivalents are saved beside each English document with a `_CN.md` suffix (`README_CN.md` is at the repository root); `CAMERA_TROUBLESHOOTING_CN.md` and the other translated guides are directly accessible from the Chinese README.
 
 Runtime caches (`.venv/`, `.uv-cache/`, `.cache/`, browser profiles, downloaded test images, `pytest-cache-files-*`) are development-only and gitignored.
 

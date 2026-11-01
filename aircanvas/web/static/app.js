@@ -28,6 +28,7 @@ const DEFAULT_CONFIG = {
   mode: 'screen', tool: 'draw', mirror_tool: 'track',
   auto_shapes: true, show_landmarks: true, mirror_camera: true,
   show_camera_pip: true, brush_color: '#ff6b57', brush_width: 5,
+  hand_backend: 'mediapipe', hand_model_path: '', hand_detector_path: '', hand_device: 'auto',
   gesture: {
     smoothing: 0.55, pinch_sensitivity: 1.0, stability_frames: 5,
     nav_sensitivity: 1.0, nav_hold_ms: 280, nav_cooldown_ms: 1000,
@@ -130,7 +131,8 @@ function cacheElements() {
     'mapPage', 'pinchSensitivity', 'pinchSensitivityValue', 'cursorSmoothing',
     'cursorSmoothingValue', 'navHold', 'navHoldValue', 'poseStability',
     'poseStabilityValue', 'mirrorCamera', 'showLandmarks', 'leftHanded',
-    'dominantHand', 'cameraDevice', 'welcomeDialog', 'helpDialog', 'securityDialog',
+    'dominantHand', 'cameraDevice', 'handModel', 'handModelPath', 'handModelStatus',
+    'welcomeDialog', 'helpDialog', 'securityDialog',
     'securityLink', 'closeWelcome', 'welcomeCamera', 'welcomeDemo', 'welcomeMouse',
     'helpBtn', 'closeHelp', 'helpDone', 'closeSecurity', 'securityDone',
     'toolsToggle', 'controlsToggle', 'closeTools', 'closeInspector', 'leftPanel',
@@ -166,6 +168,9 @@ function normalizeConfig(raw) {
   config.mode = config.mode === 'mirror' ? 'mirror' : 'screen';
   if (!['draw', 'navigate', 'mouse'].includes(config.tool)) config.tool = 'draw';
   if (!['annotate', 'track'].includes(config.mirror_tool)) config.mirror_tool = 'track';
+  if (!['mediapipe', 'rtmpose', 'yolo_pose'].includes(config.hand_backend)) config.hand_backend = 'mediapipe';
+  if (!['auto', 'cpu', 'cuda', 'mps'].includes(config.hand_device)) config.hand_device = 'auto';
+  config.hand_model_path = String(config.hand_model_path || '').trim();
   return config;
 }
 
@@ -378,6 +383,8 @@ function hydrateConfig(config) {
   setRange(els.navHold, els.navHoldValue, Math.round(state.config.gesture.nav_hold_ms), ' ms');
   setRange(els.poseStability, els.poseStabilityValue, Math.round(state.config.gesture.stability_frames), ' frames');
   setSelect(els.dominantHand, state.config.gesture.dominant_hand);
+  setSelect(els.handModel, state.config.hand_backend);
+  els.handModelPath.value = state.config.hand_model_path || '';
   updateModeUI(state.config.mode, { send: false });
   updateToolUI(activeTool(), { send: false });
   updateSmartPill();
@@ -623,6 +630,21 @@ function bindUI() {
   });
   els.dominantHand.addEventListener('change', () => {
     patchConfig({ gesture: { dominant_hand: els.dominantHand.value } }, 0);
+  });
+  els.handModel.addEventListener('change', () => {
+    const backend = els.handModel.value;
+    const allowed = { mediapipe: ['.task'], rtmpose: ['.onnx', '.zip', '.tflite'], yolo_pose: ['.pt'] }[backend] || [];
+    let path = state.config.hand_model_path || '';
+    if (path && !allowed.some((ext) => path.toLowerCase().endsWith(ext))) path = '';
+    state.config.hand_model_path = path;
+    els.handModelPath.value = path;
+    patchConfig({ hand_backend: backend, hand_model_path: path }, 0);
+  });
+  els.handModelPath.addEventListener('change', () => {
+    patchConfig({ hand_model_path: els.handModelPath.value.trim() }, 0);
+  });
+  els.handModelPath.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') els.handModelPath.blur();
   });
   els.cameraDevice.addEventListener('change', () => {
     state.cameraDeviceId = els.cameraDevice.value;
@@ -976,6 +998,7 @@ function applySnapshot(snapshot) {
   setText(els.stageStats, `${Number(stats.fps || 0).toFixed(1)} fps · ${demoFeed ? 'simulated' : `${Number(stats.recognition_ms || 0).toFixed(1)} ms`}`);
   const status = snapshot.status || {};
   setText(els.statusMessage, status.message || statusTextForState(snapshot));
+  updateHandModelStatus(status);
   els.statusDot.style.background = visible ? 'var(--mint)' : 'var(--amber)';
   const drawing = snapshot.drawing || {};
   document.querySelector('[data-action="undo"]').disabled = !drawing.can_undo;
@@ -1019,6 +1042,24 @@ function statusTextForState(snapshot) {
   if (state.cameraStatus === 'live') return 'Browser camera live';
   if (state.cameraStatus === 'error') return state.cameraError || 'Camera unavailable';
   return state.connected ? 'Ready' : 'Connecting to local service…';
+}
+
+function updateHandModelStatus(status) {
+  if (!els.handModelStatus) return;
+  const selected = state.config.hand_backend;
+  const entries = status.hand_backends || [];
+  const info = entries.find((item) => item.key === selected) || status.hand_backend;
+  if (!info) {
+    setText(els.handModelStatus, 'Hand model status unavailable');
+    els.handModelStatus.className = 'service-note hand-model-status';
+    return;
+  }
+  const detail = info.available
+    ? `● ${info.label} ready`
+    : `○ ${info.label}: ${info.reason}${info.requires ? ` · ${info.requires}` : ''}`;
+  setText(els.handModelStatus, detail);
+  els.handModelStatus.className = `service-note hand-model-status ${info.available ? 'ready' : 'unavailable'}`;
+  els.handModelStatus.title = info.note || '';
 }
 
 function renderTrackList(tracks) {

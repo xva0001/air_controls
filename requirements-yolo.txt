@@ -1,0 +1,5 @@
+# Optional YOLO Pose backend.
+# Requires a custom 21-keypoint hand pose .pt model; stock 17-keypoint body
+# weights are rejected. Install with:
+#   python -m pip install -r requirements-yolo.txt
+ultralytics>=8.3

@@ -1,5 +1,5 @@
 # Runtime dependencies for AirCanvas.
-# Tested with Python 3.13 on Windows 11 and the versions resolved below.
+# Tested with global Python 3.15.1 on Windows 11 (desktop camera path).
 numpy>=1.24
 opencv-contrib-python>=4.9
 mediapipe>=0.10.14

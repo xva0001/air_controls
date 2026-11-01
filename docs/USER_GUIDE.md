@@ -10,13 +10,26 @@ This guide covers both the desktop application and the browser interface.
 
 ### Desktop
 
+On this workstation, use the verified **global Python 3.15.1** path in a normal PowerShell window:
+
+```powershell
+run_desktop_global.cmd
+# equivalent:
+python run_desktop.py --camera-backend msmf --no-onboarding
+```
+
+For a fresh machine with a venv:
+
 ```powershell
 python run_desktop.py
 ```
 
 - **Camera** opens automatically. If no camera exists, choose **Use simulated feed** or draw with the mouse.
+- Choose **System → Camera backend** if MSMF/DSHOW needs switching.
+- Choose **System → Hand landmark model** to switch between MediaPipe, RTMPose-Hand and a custom 21-keypoint YOLO Pose `.pt`. The readiness line tells you what is missing; see [HAND_MODEL_BACKENDS.md](HAND_MODEL_BACKENDS.md).
 - `--demo` starts the labelled simulated feed immediately.
 - `--mode mirror --tool track --demo` jumps straight to object tracking.
+- Camera access must happen outside a coding-agent sandbox; otherwise Windows may hide the device from the process.
 
 ### Web
 
@@ -119,12 +132,23 @@ Desktop OS mouse and system navigation are off by default. Enabling them shows a
 
 ## 8. Camera troubleshooting
 
+If the desktop app cannot open a camera, first run the standalone probe:
+
+```powershell
+python scripts/diagnose_camera.py --max-index 3
+```
+
+It tries every relevant OpenCV backend for cameras 0–3 and shows whether the device opens and actually delivers a frame. This build tries **MSMF → DSHOW → OpenCV auto** on Windows; the exact error is also written to the app log. The camera backend can be changed in **System → Camera backend** without restarting the app.
+
 | Problem | What to do |
 | --- | --- |
-| No camera found | Check OS privacy settings; close other camera apps; use Simulated feed |
+| `VIDEOIO(DSHOW) ... can't be used to capture by index` | Usually means no DirectShow device is exposed. Try backend **Media Foundation**, then **OpenCV auto**; run the probe |
+| No camera found | Check Windows Settings → Privacy & security → Camera; check Device Manager; close other camera apps; use Simulated feed |
+| Camera works in the browser but not desktop | OpenCV/Windows cannot see the device in this session. Use the web interface, or fix the desktop camera privacy/backend; run the probe |
 | Permission denied (web) | Click the camera icon in the address bar and allow, then Retry |
 | Page opened via LAN HTTP | Use `http://localhost:8765` or `https://`; camera requires a secure context |
 | Camera busy | Close Teams/Zoom/OBS virtual camera; retry |
+| Camera opened but no frame | Try a different backend/index; some virtual cameras report opened but never deliver frames |
 | Hand not detected | Improve lighting, show the whole hand, move closer, check dominant hand setting |
 | Gesture fires too easily | Lower sensitivity, increase stability/navigation hold |
 | Gesture does not fire | Raise pinch sensitivity, hold the pose longer, check mapping |

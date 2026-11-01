@@ -118,6 +118,11 @@ class AppConfig:
     os_mouse: bool = False
     os_navigation: bool = False
     camera_index: int = 0
+    camera_backend: str = "auto"
+    hand_backend: str = "mediapipe"
+    hand_model_path: str = ""
+    hand_detector_path: str = ""
+    hand_device: str = "auto"
     brush_color: str = "#ff6b57"
     brush_width: float = 5.0
     onboarding_done: bool = False
@@ -132,6 +137,14 @@ class AppConfig:
         if self.mirror_tool not in (t.value for t in MirrorTool):
             self.mirror_tool = MirrorTool.TRACK.value
         self.camera_index = int(_clamp(int(self.camera_index), 0, 9))
+        if self.camera_backend not in ("auto", "msmf", "dshow", "any", "v4l2", "avfoundation"):
+            self.camera_backend = "auto"
+        if self.hand_backend not in ("mediapipe", "rtmpose", "yolo_pose"):
+            self.hand_backend = "mediapipe"
+        if self.hand_device not in ("auto", "cpu", "cuda", "mps"):
+            self.hand_device = "auto"
+        self.hand_model_path = str(self.hand_model_path or "").strip()
+        self.hand_detector_path = str(self.hand_detector_path or "").strip()
         self.brush_width = _clamp(float(self.brush_width), 1.0, 24.0)
         if not isinstance(self.brush_color, str) or not self.brush_color.startswith("#"):
             self.brush_color = "#ff6b57"

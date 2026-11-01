@@ -8,7 +8,8 @@ AirCanvas is a working academic prototype, not a shipping product. The limitatio
 
 | Limitation | Impact | Current mitigation |
 | --- | --- | --- |
-| No physical webcam on the build machine | End-to-end camera hardware behaviour, autofocus, rolling shutter and USB flakiness could not be observed | MediaPipe validated on a real hand photograph; web camera transport validated with a synthetic `MediaStream`; labelled demo feed uses the real session/tracker |
+| Camera hidden by the agent sandbox | Normal confined runs could not use the webcam; hardware-specific autofocus/USB behaviour is environment-dependent | Validated unconfined with global Python 3.15.1 (MSMF 1280×720, 31.5 FPS, 17.3 ms); MediaPipe also validated on a real hand photograph; web camera transport validated with a synthetic `MediaStream` |
+| Optional RTMPose/YOLO backends are not bundled | They need `rtmlib`/`ultralytics` plus a 21-keypoint checkpoint; RTMPose-Hand downloads models on first use | Adapters validate availability and fail with an actionable reason; MediaPipe remains the tested default. RTMPose body m/l and stock 17-keypoint YOLO weights are explicitly rejected. |
 | Native OS mouse/navigation not physically exercised | A real Windows desktop takeover could not be performed in the sandbox | Native bridge is isolated, unit-tested at the semantic-event level, off by default, consent-gated and release-on-exit |
 | Click-through overlay validated at window-flag/lifecycle level, not against every Windows compositor | Multi-monitor/mixed-DPI/compositor-specific click-through may vary | Separate click-through canvas and interactive toolbar; docs call out verification |
 | No formal user study | Learnability/satisfaction claims are expert analysis | Heuristic review with severity ratings and explicit non-empirical disclaimer |

@@ -28,7 +28,14 @@ from .config import (
 )
 from .drawing import DrawCommit, DrawingEngine
 from .geometry import Point
-from .gestures import GestureStabilizer, HandTracker, classify_hand
+from .gestures import GestureStabilizer, classify_hand
+from .hand_models import (
+    HandLandmarkBackend,
+    MediaPipeBackend,
+    backend_catalog,
+    backend_status,
+    create_hand_backend,
+)
 from .mapping import (
     GestureMapper,
     MouseController,
@@ -67,7 +74,7 @@ class InteractionSession:
         self,
         config: AppConfig | None = None,
         *,
-        hand_tracker: HandTracker | None = None,
+        hand_tracker: Any | None = None,
         tracker_manager: ObjectTrackerManager | None = None,
     ) -> None:
         self._lock = threading.RLock()
@@ -83,8 +90,15 @@ class InteractionSession:
             hold_seconds=self.config.gesture.selection_hold_ms / 1000.0
         )
         self._pointer_smoother = PointerSmoother(self.config.gesture.cursor_smoothing)
-        self._hand_tracker = hand_tracker
-        self._hand_tracker_attempted = hand_tracker is not None
+        if hand_tracker is None:
+            self._hand_tracker: HandLandmarkBackend | None = None
+        elif isinstance(hand_tracker, HandLandmarkBackend):
+            self._hand_tracker = hand_tracker
+        else:
+            # Backwards-compatible support for an injected HandTracker (tests/tools).
+            self._hand_tracker = MediaPipeBackend(tracker=hand_tracker)
+        self._backend_fail_key: tuple[Any, ...] | None = None
+        self._backend_retry_at = 0.0
         self._recognition_error = ""
 
         self._hand: HandObservation | None = None
@@ -206,6 +220,12 @@ class InteractionSession:
             mode_changed = new.mode != old.mode
             tool_changed = new.tool != old.tool
             mirror_tool_changed = new.mirror_tool != old.mirror_tool
+            backend_changed = (
+                new.hand_backend != old.hand_backend
+                or new.hand_model_path != old.hand_model_path
+                or new.hand_detector_path != old.hand_detector_path
+                or new.hand_device != old.hand_device
+            )
             if mode_changed or tool_changed or mirror_tool_changed:
                 self._finish_stroke(time.monotonic())
                 self._release_mouse()
@@ -224,7 +244,24 @@ class InteractionSession:
             self.screen_drawing.style(new.brush_color, new.brush_width)
             self.mirror_drawing.style(new.brush_color, new.brush_width)
             self._pointer_smoother = PointerSmoother(new.gesture.cursor_smoothing)
+            if backend_changed:
+                self._reset_hand_backend()
             return self.config
+
+    def _reset_hand_backend(self) -> None:
+        if self._hand_tracker is not None:
+            try:
+                self._hand_tracker.close()
+            except Exception:
+                log.debug("Hand backend close failed", exc_info=True)
+        self._hand_tracker = None
+        self._backend_fail_key = None
+        self._backend_retry_at = 0.0
+        self._recognition_error = ""
+        status = backend_status(self.config)
+        if not status.available:
+            self._recognition_error = status.reason
+            self.set_toast(f"Hand model unavailable: {status.reason}", "error", 4.5)
 
     # ------------------------------------------------------------------ status
     def set_camera_status(
@@ -418,19 +455,31 @@ class InteractionSession:
     def _detect(self, frame_bgr: np.ndarray | None, now: float) -> HandObservation | None:
         if frame_bgr is None or not getattr(frame_bgr, "size", 0):
             return None
+        key = (
+            self.config.hand_backend,
+            self.config.hand_model_path,
+            self.config.hand_detector_path,
+            self.config.hand_device,
+        )
+        if self._backend_fail_key == key and now < self._backend_retry_at:
+            return None
         try:
             if self._hand_tracker is None:
-                self._hand_tracker = HandTracker()
-            if not self._hand_tracker.ready:
-                self._hand_tracker.initialize()
-            self._hand_tracker_attempted = True
+                status = backend_status(self.config)
+                if not status.available:
+                    raise RuntimeError(status.reason or f"{status.label} is unavailable")
+                self._hand_tracker = create_hand_backend(self.config)
+            self._hand_tracker.initialize()
             self._recognition_error = ""
+            self._backend_fail_key = None
             return self._hand_tracker.detect(frame_bgr, now, self.config.gesture.dominant_hand)
         except Exception as exc:  # keep the UI alive, surface a useful message
             self._recognition_error = str(exc)
+            self._backend_fail_key = key
+            self._backend_retry_at = now + 5.0
             if not self._camera["message"] or "hand" not in self._camera["message"].lower():
-                self.set_toast(f"Hand model unavailable: {exc}", "error", 4.0)
-            log.exception("Hand detection failed")
+                self.set_toast(f"Hand model unavailable: {exc}", "error", 4.5)
+            log.exception("Hand detection failed (backend=%s)", self.config.hand_backend)
             return None
 
     # ------------------------------------------------------------------ screen
@@ -748,6 +797,12 @@ class InteractionSession:
                 "status": {
                     "message": self._status_message,
                     "recognition_error": self._recognition_error,
+                    "hand_backend": (
+                        self._hand_tracker.status().to_dict()
+                        if self._hand_tracker is not None
+                        else backend_status(self.config).to_dict()
+                    ),
+                    "hand_backends": [item.to_dict() for item in backend_catalog(self.config)],
                     "tracking": self._tracking_summary(),
                     "toast": self._toast,
                 },
@@ -774,3 +829,4 @@ class InteractionSession:
             if self._hand_tracker is not None:
                 self._hand_tracker.close()
             self._hand_tracker = None
+            self._backend_fail_key = None

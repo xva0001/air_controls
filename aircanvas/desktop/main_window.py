@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QSizeGrip,
@@ -26,8 +27,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..camera import CameraPipeline
+from ..camera import CameraPipeline, diagnose_cameras
 from ..config import BRUSH_COLORS, Pose, save_config
+from ..hand_models import backend_status
 from ..demo import DemoEngine, DemoPipeline
 from ..models import GESTURE_LABELS
 from ..native import NativeInputBridge
@@ -123,6 +125,7 @@ class TitleBar(QWidget):
 class CameraNotice(QFrame):
     retry_requested = Signal()
     demo_requested = Signal()
+    diagnostics_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -151,10 +154,14 @@ class CameraNotice(QFrame):
         buttons.setSpacing(6)
         retry = QPushButton("Retry camera")
         retry.clicked.connect(self.retry_requested)
+        diagnose = QPushButton("Diagnose")
+        diagnose.setToolTip("Probe camera indices and OpenCV backends")
+        diagnose.clicked.connect(self.diagnostics_requested)
         demo = QPushButton("Use simulated feed")
         demo.setObjectName("Primary")
         demo.clicked.connect(self.demo_requested)
         buttons.addStretch(1)
+        buttons.addWidget(diagnose)
         buttons.addWidget(retry)
         buttons.addWidget(demo)
         layout.addLayout(buttons)
@@ -269,6 +276,7 @@ class MainWindow(QMainWindow):
         self.camera_notice = CameraNotice(self.stage)
         self.camera_notice.retry_requested.connect(self.start_camera)
         self.camera_notice.demo_requested.connect(self.start_demo)
+        self.camera_notice.diagnostics_requested.connect(self._show_camera_diagnostics)
         self.camera_notice.hide()
 
     def _build_titlebar(self) -> None:
@@ -614,7 +622,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(hline())
         self.inspector_layout = layout
         # System.
-        layout.addWidget(SectionHeader("SYSTEM", "Camera & control"))
+        layout.addWidget(SectionHeader("SYSTEM", "Camera, model & control"))
         self.mirror_camera_row = SettingRow("Mirror camera", "Selfie view; landmarks share the mirrored origin.", checked=self.session.config.mirror_camera)
         self.mirror_camera_row.toggled.connect(self._on_mirror_camera)
         layout.addWidget(self.mirror_camera_row)
@@ -636,6 +644,45 @@ class MainWindow(QMainWindow):
         self.camera_combo = ComboRow("Camera index", [(str(i), f"Camera {i}") for i in range(4)], value=str(self.session.config.camera_index))
         self.camera_combo.changed.connect(self._on_camera_index)
         layout.addWidget(self.camera_combo)
+        self.backend_combo = ComboRow(
+            "Camera backend",
+            [
+                ("auto", "Auto (MSMF → DSHOW)"),
+                ("msmf", "Media Foundation"),
+                ("dshow", "DirectShow"),
+                ("any", "OpenCV auto"),
+            ],
+            value=self.session.config.camera_backend,
+        )
+        self.backend_combo.changed.connect(self._on_camera_backend)
+        layout.addWidget(self.backend_combo)
+        self.hand_model_combo = ComboRow(
+            "Hand landmark model",
+            [
+                ("mediapipe", "MediaPipe Hands"),
+                ("rtmpose", "RTMPose-Hand"),
+                ("yolo_pose", "YOLO Pose (21-kp)"),
+            ],
+            value=self.session.config.hand_backend,
+        )
+        self.hand_model_combo.changed.connect(self._on_hand_model)
+        layout.addWidget(self.hand_model_combo)
+        model_row = QHBoxLayout()
+        model_row.setSpacing(6)
+        self.hand_model_path_label = QLabel()
+        self.hand_model_path_label.setObjectName("handModelPath")
+        self.hand_model_path_label.setMaximumWidth(190)
+        self.hand_model_path_label.setToolTip("Optional model path; MediaPipe uses the bundled model when empty.")
+        choose_model = QPushButton("Choose model…")
+        choose_model.clicked.connect(self._choose_hand_model)
+        model_row.addWidget(self.hand_model_path_label, 1)
+        model_row.addWidget(choose_model)
+        layout.addLayout(model_row)
+        self.hand_model_status = QLabel()
+        self.hand_model_status.setObjectName("handModelStatus")
+        self.hand_model_status.setWordWrap(True)
+        layout.addWidget(self.hand_model_status)
+        self._update_hand_model_ui()
         source_row = QHBoxLayout()
         source_row.setSpacing(6)
         webcam = QPushButton("Use webcam")
@@ -728,7 +775,11 @@ class MainWindow(QMainWindow):
         self.camera_notice.set_message("Opening camera and loading the hand model...")
         self.camera_notice.show()
         self._position_camera_notice()
-        pipeline = CameraPipeline(self.session, camera_index=self.session.config.camera_index)
+        pipeline = CameraPipeline(
+            self.session,
+            camera_index=self.session.config.camera_index,
+            backend=self.session.config.camera_backend,
+        )
         self._pipeline = pipeline
         if not pipeline.start():
             self.footer.set_message("Camera unavailable - use the simulated feed", AMBER)
@@ -1146,6 +1197,38 @@ class MainWindow(QMainWindow):
         self.session.apply_config({"gesture": {"dominant_hand": value}})
         self._schedule_save()
 
+    def _show_camera_diagnostics(self) -> None:
+        """Probe indices/backends from the UI and explain the result."""
+        self._toast.show_message("Probing camera backends…", "info", 1200)
+        report = diagnose_cameras(3)
+        working = [item for item in report["results"] if item.get("frame")]
+        lines = [f"OpenCV {report['opencv']} on {report['platform']}", ""]
+        if working:
+            lines.append("Working camera paths:")
+            for item in working:
+                size = item.get("frame_size") or [0, 0]
+                lines.append(
+                    f"  ✓ index {item['index']} · {item['backend']} · {size[0]}×{size[1]} · {item.get('elapsed_ms', 0):.0f} ms"
+                )
+            lines.append("")
+            lines.append("Choose this backend and index under System, then retry the camera.")
+        else:
+            lines.append("No backend/index delivered a frame.")
+            lines.append("")
+            index0 = [item for item in report["results"] if item["index"] == 0]
+            for item in index0:
+                lines.append(f"  index 0 · {item['backend']}: {item.get('error', 'no frame')}")
+            lines.append("")
+            lines.append(
+                "Check Windows Settings → Privacy & security → Camera, close other camera apps "
+                "(Teams/Zoom/OBS virtual cameras), or use the simulated feed. "
+                "If the camera works in a browser but not here, use the web interface: "
+                "python run_web.py --open"
+            )
+        lines.append("")
+        lines.append("CLI: python scripts/diagnose_camera.py --max-index 3")
+        QMessageBox.information(self, "Camera diagnostics", "\n".join(lines))
+
     def _on_camera_index(self, value: str) -> None:
         try:
             index = int(value)
@@ -1155,6 +1238,82 @@ class MainWindow(QMainWindow):
         self._schedule_save()
         if self._source == "camera":
             self.start_camera()
+
+    def _on_camera_backend(self, value: str) -> None:
+        self.session.apply_config({"camera_backend": value})
+        self._schedule_save()
+        if self._source == "camera":
+            self.start_camera()
+
+    # ---------------------------------------------------------- hand model
+    def _update_hand_model_ui(self) -> None:
+        config = self.session.config
+        path = config.hand_model_path
+        if path:
+            label_text = path.rstrip("/").rsplit("/", 1)[-1] if "://" in path else Path(path).name
+            tooltip = path
+        elif config.hand_backend == "rtmpose":
+            label_text = "rtmlib default (downloaded once)"
+            tooltip = "Leave empty to let rtmlib download the RTMDet hand detector and RTMPose-Hand ONNX models."
+        elif config.hand_backend == "yolo_pose":
+            label_text = "Choose a 21-keypoint .pt"
+            tooltip = "Stock YOLOv8/v11-pose models have 17 body keypoints and are rejected."
+        else:
+            label_text = "Bundled hand_landmarker.task"
+            tooltip = "Leave empty to use the bundled MediaPipe model."
+        self.hand_model_path_label.setText(label_text)
+        self.hand_model_path_label.setToolTip(tooltip)
+        status = backend_status(config)
+        if status.available:
+            detail = status.requires if status.requires not in ("", "mediapipe") else ""
+            suffix = f" · {detail}" if detail else ""
+            self.hand_model_status.setText(f"● {status.label} ready{suffix}")
+            self.hand_model_status.setStyleSheet(f"color:{MINT}; font-size:10px;")
+        else:
+            detail = status.reason
+            if status.requires:
+                detail = f"{detail} · {status.requires}"
+            self.hand_model_status.setText(f"○ {detail}")
+            self.hand_model_status.setStyleSheet(f"color:{AMBER}; font-size:10px;")
+        self.hand_model_status.setToolTip(status.note)
+
+    def _on_hand_model(self, value: str) -> None:
+        config = self.session.config
+        path = config.hand_model_path
+        allowed = {
+            "mediapipe": (".task",),
+            "rtmpose": (".onnx", ".zip", ".tflite"),
+            "yolo_pose": (".pt",),
+        }.get(value, ())
+        if path and not path.lower().endswith(allowed):
+            path = ""
+        self.session.apply_config({"hand_backend": value, "hand_model_path": path})
+        self._schedule_save()
+        self._update_hand_model_ui()
+        status = backend_status(self.session.config)
+        if not status.available:
+            self._toast.show_message(
+                f"{status.label}: {status.reason}. {status.requires}".strip(),
+                "warning",
+                6000,
+            )
+
+    def _choose_hand_model(self) -> None:
+        backend = self.session.config.hand_backend
+        filters = {
+            "mediapipe": "MediaPipe model (*.task);;All files (*)",
+            "rtmpose": "RTMPose ONNX bundle (*.onnx *.zip *.tflite);;All files (*)",
+            "yolo_pose": "YOLO Pose weights (*.pt);;All files (*)",
+        }[backend]
+        filename, _ = QFileDialog.getOpenFileName(self, "Choose hand landmark model", str(Path.home()), filters)
+        if not filename:
+            return
+        self.session.apply_config({"hand_model_path": filename})
+        self._schedule_save()
+        self._update_hand_model_ui()
+        status = backend_status(self.session.config)
+        if not status.available:
+            self._toast.show_message(f"{status.label}: {status.reason}", "warning", 5000)
 
     def _apply_handedness_layout(self) -> None:
         left_handed = self.session.config.gesture.left_handed

@@ -13,7 +13,7 @@ AirCanvas explores the same gesture-controlled drawing, navigation, mouse and ob
 
 The desktop application offers the broadest capability: native operating-system mouse and keyboard navigation, a transparent click-through overlay, a persistent inspector and immediate local feedback. The browser application offers the widest reach and easiest distribution: it runs on any modern browser, adapts from a three-column studio to mobile drawers, and needs no installation beyond the local Python service. The browser cannot, by design, paint over other applications, move the OS cursor, or inject global shortcuts. Those are documented as real security boundaries rather than defects.
 
-A 43-test automated suite, a real-hand MediaPipe validation, a deterministic demo feed, and a headless render of both interfaces provide evidence for the claims. No formal participant study was conducted; the usability section is an expert heuristic review with explicit limitations.
+A 52-test automated suite, a real-hand MediaPipe validation, a deterministic demo feed, and a headless render of both interfaces provide evidence for the claims. No formal participant study was conducted; the usability section is an expert heuristic review with explicit limitations.
 
 ---
 
@@ -29,7 +29,7 @@ A 43-test automated suite, a real-hand MediaPipe validation, a deterministic dem
 | Web, Mirror Mode | Same build | `screenshots/web-mirror.png` |
 | Web, mobile layout | Chromium emulation, 390×844 | `screenshots/web-mobile.png` |
 
-The build machine had no physical webcam. MediaPipe was validated on a real 960×640 hand photograph; screenshots use the explicitly labelled `SIMULATED` feed, which exercises the real `InteractionSession`, drawing engine, selection detector and CSRT tracker. Browser camera transport was exercised with a synthetic `MediaStream` (permission, capture, mirroring, JPEG transport, state return). Native OS mouse/navigation was exercised by code review and unit-tested event generation, not by physically moving the build machine's cursor.
+The build machine has a physical webcam, but the coding-agent sandbox hid it. The final camera path was validated unconfined with global Python 3.15.1: MSMF, 1280×720, 103 frames in ~4 s (31.5 FPS), 17.3 ms recognition. MediaPipe was also validated on a real 960×640 hand photograph; screenshots use the explicitly labelled `SIMULATED` feed, which exercises the real `InteractionSession`, drawing engine, selection detector and CSRT tracker. Browser camera transport was exercised with a synthetic `MediaStream` (permission, capture, mirroring, JPEG transport, state return). Native OS mouse/navigation was exercised by code review and unit-tested event generation, not by physically moving the machine's cursor.
 
 ### 1.2 Methods
 
@@ -38,9 +38,9 @@ The build machine had no physical webcam. MediaPipe was validated on a real 960�
 3. **Expert heuristic evaluation** using Nielsen's ten heuristics and Shneiderman's Eight Golden Rules.
 4. **Feature parity matrix** with fully supported / partially supported / unavailable status.
 5. **Performance measurement** on the build machine.
-6. **Automated verification:** 43 tests, Ruff static checks and browser runtime error collection.
+6. **Automated verification:** 52 tests, Ruff static checks and browser runtime error collection.
 
-**Limitations of this evaluation.** No participants were recruited, so claims about learnability and satisfaction are analytical rather than empirical. The test environment had no physical camera. Native click-through/OS control requires an interactive Windows session and a real camera for full acceptance.
+**Limitations of this evaluation.** No participants were recruited, so claims about learnability and satisfaction are analytical rather than empirical. The camera was hidden from the coding-agent sandbox but was validated unconfined with global Python 3.15.1. Native click-through/OS control requires an interactive Windows session and a real camera for full acceptance.
 
 ---
 
@@ -343,7 +343,7 @@ Desktop is the only interface that can participate in a **desktop workflow**: an
 
 ### 10.1 Measured behaviour
 
-Build machine: Windows 11, Python 3.13.5, CPU execution, no discrete GPU requirement.
+Build machine: Windows 11, global Python 3.15.1 for the full 52-test suite and final camera run, CPU execution, no discrete GPU requirement.
 
 | Measurement | Result | Conditions |
 | --- | --- | --- |

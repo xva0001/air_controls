@@ -3,6 +3,8 @@
 > **Touch the air. Draw the world.**
 > A gesture-controlled interactive system with webcam hand tracking, a shared Python core, a PySide6 desktop application and a FastAPI browser application.
 
+**Language:** English · [繁體中文](README_CN.md) · Chinese versions of the individual docs are the matching `*_CN.md` files in [`docs/`](docs/).
+
 AirCanvas is a complete, local-first gesture interaction studio. It turns a webcam into a direct-manipulation surface for drawing, deliberate screen navigation, mouse control, mirror-mode annotation and circle-to-select object tracking. Both interfaces run the same Python modules — gesture recognition, mapping, drawing, shape correction, undo/redo and tracking are never reimplemented in JavaScript.
 
 ![AirCanvas desktop in Screen Mode](docs/screenshots/desktop-screen.png)
@@ -27,7 +29,8 @@ AirCanvas is a complete, local-first gesture interaction studio. It turns a webc
 | Object selection/tracking | Fingertip loop detector, hold-to-lock, CSRT tracker with appearance guard, template recovery after occlusion, confirmed out-of-view termination, pinch/UI removal |
 | Desktop UI | PySide6 native studio shell, frameless window, toolbar, inspector, onboarding, keyboard shortcuts, transparent overlay |
 | Web UI | FastAPI + WebSocket + HTML/CSS/JavaScript, browser camera capture, responsive canvas renderer, in-browser controls |
-| Shared core | `camera`, `gestures`, `mapping`, `drawing`, `shapes`, `tracking`, `session`, `config`, `native`, `demo` |
+| Hand model choice | Bundled MediaPipe; optional RTMPose-Hand (`rtmlib`) and custom 21-keypoint YOLO Pose (`.pt`) with readiness/error reporting |
+| Shared core | `camera`, `gestures`, `hand_models`, `mapping`, `drawing`, `shapes`, `tracking`, `session`, `config`, `native`, `demo` |
 | HCI | Object-Action mapping, direct manipulation, undo/redo, error prevention, universal usability, Gestalt grouping, onboarding and keyboard/mouse alternatives |
 | Academic report | [Architecture](docs/ARCHITECTURE.md) · [Gesture map](docs/GESTURE_MAP.md) · [Interface comparison](docs/INTERFACE_COMPARISON.md) · [Browser limits](docs/BROWSER_LIMITATIONS.md) · [Testing](docs/TESTING.md) |
 | Screenshots | `docs/screenshots/` (1480×920 desktop/web plus a 390×844 responsive view) |
@@ -39,16 +42,22 @@ A labelled simulated camera feed is built in. It drives the **real** session, ge
 
 ## 2. Quick start
 
+> **On this workstation:** the camera-verified path is the **global Python 3.15.1**, launched with `run_desktop_global.cmd` or `python run_desktop.py --camera-backend msmf`. The venv instructions below are for clean machines; do not activate a venv for the global camera path. Camera device access must happen outside a coding-agent sandbox.
+
 ### Requirements
 
-- Python **3.10–3.13** (tested on Python 3.13.5, Windows 11)
+- Python **3.10–3.15** (final camera run tested on global Python 3.15.1, Windows 11; earlier automated suite on Python 3.13.5)
 - Windows is required for native mouse/navigation and the transparent overlay. Drawing, tracking, the web app and the core run cross-platform (untested on macOS/Linux).
 - A webcam is optional: use **Simulated feed**.
 - Internet access once, to install dependencies and download the 7.8 MB MediaPipe model. The model is already bundled at `aircanvas/assets/hand_landmarker.task` in this repository.
 
 ### Create and activate a virtual environment
 
-Using `uv` (recommended, and how this build was created):
+Using `uv` (recommended, and how this build was created). If PowerShell blocks activation, allow it for the current process first:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
 
 ```powershell
 uv venv --python 3.13 .venv
@@ -84,6 +93,44 @@ python run_web.py --open
 
 The browser application is served from `127.0.0.1` by default. It uses the browser camera through `getUserMedia`; a labelled simulated feed is one click away. Camera access requires **localhost or HTTPS** plus an explicit permission grant.
 
+### Run with the current global Python 3.15.1 (recommended for this machine)
+
+The global interpreter already contains PySide6 6.12, OpenCV 5.0 and MediaPipe 1.2. **Do not activate the venv** for this path:
+
+```powershell
+python --version   # should print 3.15.1
+python run_desktop.py --camera-backend msmf --no-onboarding
+# or simply:
+run_desktop_global.cmd
+```
+
+Run this from a **normal PowerShell/desktop session**. A coding-agent sandbox may block webcam device access even though the global Python can use it. `run_desktop_global.cmd` selects Python 3.15 via the `py` launcher (falling back to `python`), chooses the automatic MSMF→DSHOW backend, and skips onboarding. The desktop path needs PySide6, OpenCV and MediaPipe only; the global Python currently does **not** have FastAPI/Uvicorn, so use a venv or install those two packages if you also want the web service.
+
+Global Python 3.15 uses lazy `concurrent.futures` imports. AirCanvas includes a compatibility shim in `aircanvas/gestures.py`; `scripts/smoke_global_python.py` verifies it without opening the camera.
+
+Optional hand models are installed separately: `python -m pip install -r requirements-rtmpose.txt` or `python -m pip install -r requirements-yolo.txt`.
+
+### Choosing the hand landmark model
+
+**System → Hand landmark model** switches between the bundled **MediaPipe Hands**, **RTMPose-Hand** (via `rtmlib`) and a custom **YOLO Pose (21-kp)** `.pt` model. The readiness line tells you exactly which dependency or weight file is missing; AirCanvas does not silently fall back.
+
+```powershell
+python run_desktop.py --hand-backend rtmpose
+python run_desktop.py --hand-backend yolo_pose --hand-model models\hand-pose-21.pt
+```
+
+Important: RTMPose **body** m/l checkpoints are not 21-keypoint hand models. Stock YOLOv8/v11-pose weights are 17 COCO body keypoints; a custom 21-keypoint hand model trained on a hand dataset is required. See [Hand model backends](docs/HAND_MODEL_BACKENDS.md) for exact contracts, install commands and limitations.
+
+### Desktop camera cannot open?
+
+The desktop app now tries **Media Foundation → DirectShow → OpenCV auto** on Windows and validates that a real frame arrives. Run:
+
+```powershell
+python scripts/diagnose_camera.py --max-index 3
+```
+
+If a backend works, choose it under **System → Camera backend**, or set `AIRCANVAS_CAMERA_BACKEND=msmf` (or `dshow`) before launching. If OpenCV cannot see the device but the browser can, use the web interface — browser frames are sent to the same local Python core without relying on DirectShow/MSMF. See [Camera troubleshooting](docs/CAMERA_TROUBLESHOOTING.md) and [USER_GUIDE.md](docs/USER_GUIDE.md#8-camera-troubleshooting).
+
 ### Re-fetch the hand model if needed
 
 ```powershell
@@ -97,7 +144,7 @@ python -m pip install -r requirements-dev.txt
 python -m pytest tests -q
 ```
 
-The repository contains **43 automated tests** covering recognition, mapping, navigation safety, undo/redo, tracking recovery, the shared session, the FastAPI WebSocket and a desktop render smoke test. The screenshot scripts use Playwright; an existing Chrome with `--remote-debugging-port` can be used via `--cdp` instead.
+The repository contains **52 automated tests** covering recognition, mapping, camera and hand-model backend selection, navigation safety, undo/redo, tracking recovery, the shared session, the FastAPI WebSocket and a desktop render smoke test. The screenshot scripts use Playwright; an existing Chrome with `--remote-debugging-port` can be used via `--cdp` instead.
 
 ---
 
@@ -198,7 +245,7 @@ aircanvas/
 ├── desktop/           PySide6 interface (stage, widgets, overlay, dialogs)
 └── web/               FastAPI service + static HTML/CSS/JS interface
 aircanvas/assets/hand_landmarker.task
-tests/                 43 automated tests
+tests/                 52 automated tests
 docs/                  architecture, gesture map, comparison, testing, screenshots
 scripts/               screenshots, diagram, model download
 ```
@@ -213,8 +260,10 @@ See [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for a file-by-file descrip
 | --- | --- |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Modules, data flow, coordinate model, threading, tracking state machine, WebSocket protocol |
 | [GESTURE_MAP.md](docs/GESTURE_MAP.md) | Full gesture vocabulary, context mapping, thresholds, customisation, keyboard alternatives |
+| [HAND_MODEL_BACKENDS.md](docs/HAND_MODEL_BACKENDS.md) | MediaPipe, RTMPose-Hand and YOLO Pose selection, model contracts, installs and limitations |
 | [INTERFACE_COMPARISON.md](docs/INTERFACE_COMPARISON.md) | Academic comparison of desktop vs web, feature matrix, HCI analysis, heuristic evaluation, measured performance |
 | [BROWSER_LIMITATIONS.md](docs/BROWSER_LIMITATIONS.md) | Browser security constraints and functional differences, with evidence and workarounds |
+| [CAMERA_TROUBLESHOOTING.md](docs/CAMERA_TROUBLESHOOTING.md) | Exact DSHOW/FFMPEG/Obsensor camera messages, backend/index diagnosis and browser fallback |
 | [TESTING.md](docs/TESTING.md) | Automated + manual test procedures, environment evidence, usability checklist |
 | [USER_GUIDE.md](docs/USER_GUIDE.md) | Onboarding and troubleshooting for end users |
 | [KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md) | Known limitations and prioritised future improvements |
@@ -224,13 +273,14 @@ See [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for a file-by-file descrip
 
 ## 6. Testing and environment evidence
 
-This build was created and verified on Windows 11 with Python 3.13.5 in a local virtual environment. The build machine had **no physical webcam**, so the end-to-end camera path was validated in three complementary ways:
+This build was created and verified on Windows 11. The **full 52-test suite runs with the global Python 3.15.1** (PySide6 6.12, OpenCV 5.0, MediaPipe 1.2); screenshots and earlier benchmarks used the same codebase. The coding-agent sandbox blocks camera device access, so the final camera run was executed unconfined.
 
-1. The MediaPipe hand landmarker was run on a real hand photograph (960×640): one hand detected, 21 landmarks, `open_palm`; mean **15.8 ms** per frame (p95 17.2 ms, 63 FPS) on CPU.
-2. Both interfaces were rendered with the deterministic simulated feed, which uses the same session, drawing engine and tracker.
-3. The browser camera transport was exercised with a synthetic `MediaStream` to verify permission, capture, JPEG transport and state flow.
+1. Global Python 3.15.1 + real webcam: **MSMF**, 1280×720, **103 frames in ~4 s (31.5 FPS)**, **17.3 ms** recognition, no `recognition_error`.
+2. The MediaPipe hand landmarker was also run on a real hand photograph (960×640): one hand detected, 21 landmarks, `open_palm`; mean **15.8 ms** per frame (p95 17.2 ms) on CPU.
+3. Both interfaces were rendered with the deterministic simulated feed, which uses the same session, drawing engine and tracker.
+4. The browser camera transport was exercised with a synthetic `MediaStream` to verify permission, capture, JPEG transport and state flow.
 
-All 43 automated tests pass. See [TESTING.md](docs/TESTING.md) for exact commands and the manual acceptance checklist.
+All 52 automated tests pass with global Python 3.15.1. See [TESTING.md](docs/TESTING.md) for exact commands and the manual acceptance checklist.
 
 ---
 

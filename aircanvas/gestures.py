@@ -21,6 +21,35 @@ from .geometry import angle_at
 from .models import FingerState, GestureReading, HandObservation
 from .resources import ensure_matplotlib_cache, hand_model_path
 
+def _fix_python315_lazy_futures() -> None:
+    """Work around a Python 3.15/PySide6 lazy-import interaction.
+
+    Python 3.15 uses lazy imports for ``concurrent.futures`` submodules.  In a
+    process that has already initialized Qt, a lazy ``ThreadPoolExecutor``
+    attribute can remain a ``lazy_import`` object; MediaPipe's serial dispatcher
+    then raises ``TypeError: 'lazy_import' object is not callable``.  Resolve the
+    concrete stdlib classes and pin them onto the module before MediaPipe starts.
+    """
+    import concurrent.futures as futures
+
+    try:
+        from concurrent.futures.thread import ThreadPoolExecutor
+
+        if not isinstance(futures.ThreadPoolExecutor, type):
+            futures.ThreadPoolExecutor = ThreadPoolExecutor
+    except (ImportError, AttributeError):
+        pass
+    try:
+        from concurrent.futures.process import ProcessPoolExecutor
+
+        if not isinstance(futures.ProcessPoolExecutor, type):
+            futures.ProcessPoolExecutor = ProcessPoolExecutor
+    except (ImportError, AttributeError):
+        pass
+
+
+_fix_python315_lazy_futures()
+
 # MediaPipe hand landmark indices.
 WRIST = 0
 THUMB_CMC, THUMB_MCP, THUMB_IP, THUMB_TIP = 1, 2, 3, 4

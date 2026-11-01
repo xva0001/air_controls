@@ -7,16 +7,42 @@ a WebSocket instead.  Both paths feed the same :class:`InteractionSession`.
 from __future__ import annotations
 
 import logging
+import os
+import sys
 import threading
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import cv2
 import numpy as np
 
 log = logging.getLogger(__name__)
+
+_BACKEND_ENV = "AIRCANVAS_CAMERA_BACKEND"
+
+
+@dataclass
+class CameraAttempt:
+    backend: str
+    index: int
+    opened: bool = False
+    delivered_frame: bool = False
+    error: str = ""
+    elapsed_ms: float = 0.0
+    backend_name: str = ""
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "backend": self.backend,
+            "index": self.index,
+            "opened": self.opened,
+            "delivered_frame": self.delivered_frame,
+            "error": self.error,
+            "elapsed_ms": round(self.elapsed_ms, 1),
+            "backend_name": self.backend_name,
+        }
 
 
 @dataclass
@@ -27,6 +53,8 @@ class CameraInfo:
     height: int = 0
     fps: float = 0.0
     index: int = 0
+    backend: str = ""
+    attempts: list[CameraAttempt] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -36,7 +64,58 @@ class CameraInfo:
             "height": self.height,
             "fps": round(self.fps, 1),
             "index": self.index,
+            "backend": self.backend,
+            "attempts": [attempt.to_dict() for attempt in self.attempts],
         }
+
+
+def _backend_value(name: str) -> int | None:
+    return {
+        "msmf": getattr(cv2, "CAP_MSMF", None),
+        "dshow": getattr(cv2, "CAP_DSHOW", None),
+        "any": cv2.CAP_ANY,
+        "v4l2": getattr(cv2, "CAP_V4L2", None),
+        "avfoundation": getattr(cv2, "CAP_AVFOUNDATION", None),
+    }.get(name)
+
+
+def camera_backend_candidates(
+    preferred: str | None = None,
+    *,
+    platform: str | None = None,
+) -> list[tuple[str, int]]:
+    """Return backend attempts in priority order.
+
+    On Windows OpenCV's DirectShow backend can be present yet unusable for
+    cameras exposed only through Media Foundation (common on modern laptops
+    and remote sessions).  MSMF is therefore tried first, then DSHOW, then the
+    auto backend.  ``AIRCANVAS_CAMERA_BACKEND`` can force a single backend.
+    """
+    platform = platform or sys.platform
+    preferred_name = (preferred or "").strip().lower()
+    if preferred_name in ("", "auto"):
+        preferred_name = (os.environ.get(_BACKEND_ENV) or "auto").strip().lower()
+    forced = preferred_name or "auto"
+    candidates: list[str]
+    if platform.startswith("win"):
+        candidates = ["msmf", "dshow", "any"]
+    elif platform == "darwin":
+        candidates = ["avfoundation", "any"]
+    else:
+        candidates = ["v4l2", "any"]
+    if forced not in ("", "auto"):
+        if forced not in candidates and forced not in {"msmf", "dshow", "any", "v4l2", "avfoundation"}:
+            log.warning("Unknown AIRCANVAS_CAMERA_BACKEND=%s; using auto", forced)
+        else:
+            candidates = [forced]
+    resolved: list[tuple[str, int]] = []
+    for name in candidates:
+        value = _backend_value(name)
+        if value is not None:
+            resolved.append((name.upper(), int(value)))
+    if not resolved:
+        resolved.append(("ANY", cv2.CAP_ANY))
+    return resolved
 
 
 class OpenCVCamera:
@@ -46,11 +125,13 @@ class OpenCVCamera:
         width: int = 1280,
         height: int = 720,
         *,
+        backend: str | None = None,
         on_status: Callable[[CameraInfo], None] | None = None,
     ) -> None:
         self.index = index
         self.width = width
         self.height = height
+        self.backend = backend
         self.on_status = on_status
         self.info = CameraInfo(index=index)
         self._capture: cv2.VideoCapture | None = None
@@ -74,34 +155,93 @@ class OpenCVCamera:
 
     def open(self) -> bool:
         self._stop.clear()
+        self.info.attempts = []
         self._set_status("starting", "Opening camera...")
-        backend = cv2.CAP_DSHOW if hasattr(cv2, "CAP_DSHOW") else cv2.CAP_ANY
-        capture = None
-        for api in (backend, cv2.CAP_ANY):
+        candidates = camera_backend_candidates(self.backend)
+        capture: cv2.VideoCapture | None = None
+        first_frame: np.ndarray | None = None
+        chosen_backend = ""
+        for name, api in candidates:
+            started = time.perf_counter()
+            attempt = CameraAttempt(backend=name, index=self.index)
+            candidate: cv2.VideoCapture | None = None
             try:
-                capture = cv2.VideoCapture(self.index, api)
-                if capture is not None and capture.isOpened():
-                    break
-                if capture is not None:
-                    capture.release()
-            except Exception:
-                capture = None
-        if capture is None or not capture.isOpened():
-            self._set_status(
-                "error",
-                f"No camera found at index {self.index}. Check privacy settings or start the simulated feed.",
+                # Do not pass CAP_PROP_OPEN_TIMEOUT_MSEC/READ_TIMEOUT to MSMF:
+                # OpenCV 5.0's MSMF backend rejects property 53 during
+                # openFinalize on some devices.  Open with the backend only and
+                # validate by reading a real frame instead.
+                candidate = cv2.VideoCapture(self.index, api)
+                attempt.opened = bool(candidate is not None and candidate.isOpened())
+                if not attempt.opened:
+                    attempt.error = "backend did not open the device"
+                    if candidate is not None:
+                        candidate.release()
+                    continue
+                try:
+                    attempt.backend_name = str(candidate.getBackendName())
+                except Exception:
+                    attempt.backend_name = name
+                candidate.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+                candidate.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+                candidate.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                # Validate that a real frame arrives. Some backends report
+                # isOpened() and then never deliver a frame.
+                for _ in range(6):
+                    ok, frame = candidate.read()
+                    if ok and frame is not None and getattr(frame, "size", 0):
+                        first_frame = frame
+                        break
+                    time.sleep(0.05)
+                attempt.delivered_frame = first_frame is not None
+                if first_frame is None:
+                    attempt.error = "opened but delivered no frame"
+                    candidate.release()
+                    continue
+                capture = candidate
+                chosen_backend = name
+                attempt.error = ""
+                break
+            except Exception as exc:
+                attempt.error = f"{type(exc).__name__}: {exc}"
+                if candidate is not None:
+                    try:
+                        candidate.release()
+                    except Exception:
+                        pass
+            finally:
+                attempt.elapsed_ms = (time.perf_counter() - started) * 1000
+                self.info.attempts.append(attempt)
+
+        if capture is None or first_frame is None:
+            tried = ", ".join(attempt.backend for attempt in self.info.attempts)
+            log.warning(
+                "Could not open camera index %s. Attempts: %s",
+                self.index,
+                [attempt.to_dict() for attempt in self.info.attempts],
             )
+            message = (
+                f"No camera opened at index {self.index} (tried {tried}). "
+                "This session may not expose a webcam. Check Windows Settings > Privacy & security > Camera, "
+                "close other camera apps, or use the simulated feed. "
+                "For backend details run: python scripts/diagnose_camera.py"
+            )
+            self._set_status("error", message)
+            self.info.backend = ""
             return False
-        capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-        capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-        actual_w = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH) or self.width)
-        actual_h = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT) or self.height)
+        actual_w = int(first_frame.shape[1])
+        actual_h = int(first_frame.shape[0])
         with self._lock:
             self._capture = capture
+            self._latest = first_frame
+            self._sequence = 1
             self.info.width = actual_w
             self.info.height = actual_h
-        self._set_status("live", "Camera live")
+            self.info.backend = chosen_backend
+        try:
+            backend_name = capture.getBackendName() if capture is not None else chosen_backend
+        except Exception:
+            backend_name = chosen_backend
+        self._set_status("live", f"Camera live via {backend_name or chosen_backend} ({actual_w}×{actual_h})")
         self._thread = threading.Thread(target=self._run, name="aircanvas-camera", daemon=True)
         self._thread.start()
         return True
@@ -167,12 +307,21 @@ class CameraPipeline:
     keeping gesture feedback close to real time.
     """
 
-    def __init__(self, session: Any, *, camera_index: int = 0, width: int = 1280, height: int = 720) -> None:
+    def __init__(
+        self,
+        session: Any,
+        *,
+        camera_index: int = 0,
+        width: int = 1280,
+        height: int = 720,
+        backend: str | None = None,
+    ) -> None:
         self.session = session
         self.camera = OpenCVCamera(
             index=camera_index,
             width=width,
             height=height,
+            backend=backend,
             on_status=self._camera_status,
         )
         self._thread: threading.Thread | None = None
@@ -267,14 +416,63 @@ def list_cameras(max_devices: int = 4) -> list[int]:
     """Probe camera indices without holding them open."""
     available: list[int] = []
     for index in range(max_devices):
-        capture = None
-        try:
-            capture = cv2.VideoCapture(index, cv2.CAP_DSHOW if hasattr(cv2, "CAP_DSHOW") else cv2.CAP_ANY)
-            if capture is not None and capture.isOpened():
-                available.append(index)
-        except Exception:
-            pass
-        finally:
-            if capture is not None:
-                capture.release()
+        for _name, api in camera_backend_candidates():
+            capture = None
+            try:
+                capture = cv2.VideoCapture(index, api)
+                if capture is not None and capture.isOpened():
+                    available.append(index)
+                    break
+            except Exception:
+                pass
+            finally:
+                if capture is not None:
+                    capture.release()
     return available
+
+
+def diagnose_cameras(max_index: int = 4) -> dict[str, Any]:
+    """Return detailed backend/index diagnostics without keeping a camera open.
+
+    This is intentionally synchronous and verbose; it is used by
+    ``scripts/diagnose_camera.py`` when the normal open path fails.
+    """
+    results: list[dict[str, Any]] = []
+    for index in range(max_index + 1):
+        for name, api in camera_backend_candidates():
+            started = time.perf_counter()
+            capture = None
+            frame = None
+            record: dict[str, Any] = {"index": index, "backend": name}
+            try:
+                capture = cv2.VideoCapture(index, api)
+                record["opened"] = bool(capture is not None and capture.isOpened())
+                if record["opened"]:
+                    try:
+                        record["backend_name"] = capture.getBackendName()
+                    except Exception:
+                        record["backend_name"] = name
+                    record["width"] = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+                    record["height"] = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+                    ok, frame = capture.read()
+                    record["frame"] = bool(ok and frame is not None)
+                    if record["frame"]:
+                        record["frame_size"] = [int(frame.shape[1]), int(frame.shape[0])]
+                else:
+                    record["error"] = "backend did not open the device"
+            except Exception as exc:
+                record["error"] = f"{type(exc).__name__}: {exc}"
+            finally:
+                if capture is not None:
+                    try:
+                        capture.release()
+                    except Exception:
+                        pass
+                record["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 1)
+            results.append(record)
+    return {
+        "opencv": cv2.__version__,
+        "platform": sys.platform,
+        "backends": camera_backend_candidates(),
+        "results": results,
+    }

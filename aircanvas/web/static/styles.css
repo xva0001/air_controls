@@ -321,6 +321,16 @@ input[type="range"]:focus-visible { outline: 2px solid var(--coral); }
 }
 .mapping-grid select:hover, .select-row select:hover { border-color: #4a433b; }
 .select-row { margin-top: 4px; }
+.model-path-row { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; color: var(--muted); font-size: 8.5px; }
+.model-path-row input {
+  width: 100%; box-sizing: border-box; background: var(--surface-raised);
+  border: 1px solid var(--border); border-radius: 7px; color: var(--text);
+  padding: 7px 8px; font-size: 9.5px; min-height: 30px;
+}
+.model-path-row input:focus { outline: none; border-color: var(--coral); }
+.hand-model-status { text-align: left; line-height: 1.45; margin-top: 3px; }
+.hand-model-status.ready { color: var(--mint); }
+.hand-model-status.unavailable { color: var(--amber); }
 .native-note {
   display: flex; gap: 8px; align-items: flex-start; margin-top: 5px;
   border: 1px solid #3a3128; border-radius: 9px; padding: 9px;

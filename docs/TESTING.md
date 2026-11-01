@@ -9,13 +9,13 @@ This document defines how AirCanvas was verified and how to reproduce the checks
 | Item | Value |
 | --- | --- |
 | OS | Windows 11 (build environment) |
-| Python | 3.13.5 in `.venv` |
+| Python | **global 3.15.1** for the full 52-test suite and final camera run |
 | Desktop | PySide6 6.12.0, Qt offscreen for screenshots |
 | Vision | MediaPipe Tasks 1.2.0, OpenCV 5.0.0 (contrib, CSRT) |
 | Web | FastAPI 0.162, Uvicorn 0.54, Chromium 156 |
 | Display | 1480×920 desktop/web, 390×844 responsive |
-| Camera | No physical webcam in the build environment; simulated feed + real hand image + synthetic MediaStream used |
-| Automated suite | 43 tests, all passing |
+| Camera | Physical webcam present; the agent sandbox blocked device access. Validated unconfined with global Python 3.15.1 (MSMF 1280×720). Simulated feed + real hand image + synthetic MediaStream also used. |
+| Automated suite | 52 tests, all passing |
 
 The configuration file and caches for tests are redirected to `.cache/` so tests do not modify a user's real profile.
 
@@ -26,6 +26,11 @@ The configuration file and caches for tests are redirected to `.cache/` so tests
 ### 2.1 Command
 
 ```powershell
+# Global Python 3.15.1 path used by the final camera run:
+python -m pip install -r requirements-dev.txt
+python -m pytest tests -q
+
+# Or, in a clean venv:
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements-dev.txt
 python -m pytest tests -q
@@ -36,13 +41,15 @@ Do **not** run plain `pytest` from the repository root in a constrained sandbox 
 Expected result:
 
 ```
-43 passed
+52 passed
 ```
 
 ### 2.2 Test inventory
 
 | File | Count | What it covers |
 | --- | ---: | --- |
+| `tests/test_camera.py` | 5 | Windows MSMF→DSHOW→ANY order, forced backend, invalid-backend fallback, env override, camera attempt serialisation |
+| `tests/test_hand_models.py` | 4 | Hand-backend config validation, three-backend catalog, actionable missing-dependency reasons, injected-backend session path |
 | `tests/test_shapes.py` | 9 | Closed circles, open arcs, overshoot, tiny scribbles, engine correction, auto-shape disable, clear/undo, loop selection acquire and reject |
 | `tests/test_gestures.py` | 11 | All six synthetic poses, pinch precedence, fist vs pinch at high sensitivity, stabiliser noise rejection, hold duration, hand-loss reset |
 | `tests/test_mapping.py` | 6 | Navigation hold + accidental prevention, page swipe, cooldown/re-arm, mouse drag/click/release, right-click hold, disable release |
@@ -50,6 +57,8 @@ Expected result:
 | `tests/test_session.py` | 8 | Screen draw through shared session, shape correction on/off, custom draw pose, mouse events, navigation action, mirror tracking, mirror annotations preserved per surface, safe no-hand state |
 | `tests/test_web.py` | 3 | Health/index, WebSocket manual drawing into shared engine, demo seek produces tracking |
 | `tests/test_desktop_smoke.py` | 1 | Creates the PySide6 window offscreen, renders mirror + screen demos, grabs both, closes cleanly |
+
+`tests/test_curr_cam.py` is the user's manual OpenCV preview window. It is preserved but listed in `tests/conftest.py`'s `collect_ignore`, so pytest does not launch a blocking GUI loop.
 
 ### 2.3 Static checks
 
@@ -72,7 +81,27 @@ A public-domain-style hand photograph (`woman_hands.jpg`, downloaded during deve
 
 This validates the MediaPipe Tasks path independently of the simulated landmark generator.
 
-### 2.5 Browser runtime validation
+### 2.5 Global Python 3.15.1 compatibility
+
+The current machine runs the desktop successfully with the **global** Python 3.15.1 (PySide6 6.12.0, OpenCV 5.0.0, MediaPipe 1.2.0). Two environment-specific faults were found and fixed:
+
+1. **Python 3.15 lazy imports + PySide6.** MediaPipe's `SerialDispatcher` received a `lazy_import` object instead of `ThreadPoolExecutor`, producing `TypeError: 'lazy_import' object is not callable`. `aircanvas/gestures.py` now resolves and pins the concrete `concurrent.futures` classes before MediaPipe initialises.
+2. **MSMF property 53.** Passing `CAP_PROP_OPEN_TIMEOUT_MSEC` to OpenCV 5.0's MSMF backend caused `can't set property 53` and open failure. The camera opener no longer passes those parameters; each backend is validated by reading a real frame instead.
+
+Smoke check (normal PowerShell, not the restricted agent sandbox if the camera is blocked there):
+
+```powershell
+python scripts/smoke_global_python.py
+python scripts/smoke_global_python.py --camera
+```
+
+Unconfined verification on this machine:
+
+- Python 3.15.1 / PySide6 6.12 / OpenCV 5.0 / MediaPipe 1.2.
+- Camera opened through **MSMF** at 1280×720.
+- 103 processed frames in 4 s, **31.5 FPS**, **17.3 ms** recognition, no `recognition_error`.
+
+### 2.6 Browser runtime validation
 
 The screenshots and runtime checks were driven through Chrome DevTools Protocol because the build sandbox blocks browser subprocess pipes:
 
@@ -190,6 +219,9 @@ A marker should perform these checks on a machine with a webcam. Use `--demo` wh
 | No camera | Disable camera in Device Manager / use a machine without one | Error card, retry, demo available |
 | Camera busy | Open another app using camera, then retry | `NotReadableError`-style message |
 | Model missing | Rename `aircanvas/assets/hand_landmarker.task` | Clear missing-model toast, no crash; restore file |
+| Camera only exposed through Media Foundation | Start with DirectShow failing; choose MSMF backend | `CameraPipeline` opens and delivers a frame via MSMF instead of reporting no camera |
+| Camera opened but is a virtual/empty device | Use a virtual camera that reports opened but sends no frames | Backend attempt is rejected after six read attempts and the next backend is tried |
+| No camera in the OS session | Run `python scripts/diagnose_camera.py` | Reports all backend/index attempts; UI offers Retry, simulated feed and mouse drawing |
 | WebSocket drop | Stop the web service | “OFFLINE/connecting” state; reconnect attempts |
 | Oversized web frame | Send an invalid/oversized frame in a WS test | `error` message, session continues |
 | Non-local WS origin | Connect with another Origin | Connection closed with code 1008 |
@@ -230,6 +262,7 @@ These are indicative single-machine measurements, not a benchmark across hardwar
 | Screenshots | `docs/screenshots/` |
 | Architecture diagram | `docs/architecture_diagram.png` |
 | Screenshot scripts | `scripts/capture_desktop.py`, `scripts/capture_web.py` |
+| Camera diagnostic | `scripts/diagnose_camera.py` |
 | Diagram generator | `scripts/generate_architecture.py` |
 | Model fetcher | `scripts/fetch_model.py` |
 
@@ -239,7 +272,7 @@ These are indicative single-machine measurements, not a benchmark across hardwar
 
 **Pass criteria used here**
 
-- All 43 automated tests pass.
+- All 52 automated tests pass.
 - Both interfaces render the screen and mirror demos without JavaScript/Qt exceptions.
 - Shared-core tests prove drawing/tracking are not duplicated.
 - No OS control is reachable from a browser session.
@@ -249,7 +282,7 @@ These are indicative single-machine measurements, not a benchmark across hardwar
 **Known gaps**
 
 - No formal human-participant study; the usability section is an expert heuristic review.
-- No physical webcam in the build environment; browser camera transport was validated with a synthetic stream.
+- Camera access is blocked in the agent sandbox; validated unconfined with global Python 3.15.1. Browser camera transport was additionally validated with a synthetic stream.
 - Native OS mouse/navigation was validated by code review and unit-level event tests, not by physically taking over the build machine.
 - Click-through behaviour was verified at the window-flag/lifecycle level in offscreen Qt, not against every Windows compositor.
 - Mobile camera permission/orientation should be tested on real iOS/Android devices.

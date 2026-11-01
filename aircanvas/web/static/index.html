@@ -285,6 +285,18 @@
           <label class="select-row">Camera device
             <select id="cameraDevice"><option value="">Default camera</option></select>
           </label>
+          <label class="select-row">Hand landmark model
+            <select id="handModel">
+              <option value="mediapipe">MediaPipe Hands</option>
+              <option value="rtmpose">RTMPose-Hand</option>
+              <option value="yolo_pose">YOLO Pose (21-kp)</option>
+            </select>
+          </label>
+          <label class="model-path-row">Server model path
+            <input id="handModelPath" type="text" spellcheck="false" autocomplete="off"
+                   placeholder="Optional .onnx / .zip / .pt path">
+          </label>
+          <p class="service-note hand-model-status" id="handModelStatus">Checking hand model…</p>
           <div class="native-note">
             <svg class="icon"><use href="#i-lock"/></svg>
             <p><strong>Desktop-only:</strong> OS cursor, system navigation and a transparent overlay are blocked by browser security. Use the PySide6 build for native control.</p>

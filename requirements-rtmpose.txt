@@ -1,0 +1,4 @@
+# Optional RTMPose-Hand backend.
+# Install with: python -m pip install -r requirements-rtmpose.txt
+rtmlib>=0.0.10
+onnxruntime>=1.18

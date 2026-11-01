@@ -42,8 +42,9 @@ The diagram deliberately places the interface adapters *outside* the shared core
 
 | Module | Key classes / functions | Why it exists |
 | --- | --- | --- |
-| `aircanvas/camera.py` | `OpenCVCamera`, `CameraInfo`, `CameraPipeline`, `list_cameras` | Desktop capture thread, latest-frame queue, status and camera failure messages. The web equivalent is browser capture + WebSocket transport because servers cannot access the client's camera. |
-| `aircanvas/gestures.py` | `HandTracker`, `classify_hand`, `GestureStabilizer`, `detect_fingers` | One place for MediaPipe Tasks integration, landmark features, pose rules and temporal stability. |
+| `aircanvas/camera.py` | `OpenCVCamera`, `CameraInfo`, `CameraPipeline`, `list_cameras`, `camera_backend_candidates`, `diagnose_cameras` | Desktop capture thread, latest-frame queue, MSMF→DSHOW→ANY backend fallback, open/read validation, status and camera failure messages. The web equivalent is browser capture + WebSocket transport because servers cannot access the client's camera. |
+| `aircanvas/gestures.py` | `HandTracker`, `classify_hand`, `GestureStabilizer`, `detect_fingers` | MediaPipe Tasks implementation, landmark features, pose rules and temporal stability; includes a Python 3.15/PySide lazy-`concurrent.futures` compatibility pin. |
+| `aircanvas/hand_models.py` | `HandLandmarkBackend`, `MediaPipeBackend`, `RTMPoseHandBackend`, `YOLOPoseBackend`, `backend_catalog`, `create_hand_backend` | Pluggable 21-keypoint provider contract. Lazy optional RTMPose (`rtmlib`) and YOLO Pose (`ultralytics`) adapters; availability/reason reporting without silently replacing the selected model. |
 | `aircanvas/mapping.py` | `GestureMapper`, `NavigationController`, `MouseController`, `NavAction` | Maps semantic poses to roles. Navigation contains the arming/cooldown state machine; mouse control contains click/drag/right-click logic but **does not call the OS**. |
 | `aircanvas/drawing.py` | `DrawingEngine`, `DrawCommit` | Normalised vector strokes, brush style, eraser, clear, undo/redo snapshots, shape-correction commit. |
 | `aircanvas/shapes.py` | `recognize_shape`, `fit_circle`, `LoopSelectionDetector` | Conservative circle fitting and the two-phase loop selection gesture. |
@@ -302,8 +303,9 @@ Security controls:
 
 Why frames are dropped rather than queued: latency matters more than processing every frame. The desktop pipeline reads the newest available frame each loop. The web service processes each received frame sequentially and the browser checks `bufferedAmount`/connection state before sending.
 
-Measured on the build machine (Windows 11, CPU, Python 3.13.5):
+Measured on the build machine (Windows 11, CPU; inference benchmark on Python 3.13.5, final camera run on global Python 3.15.1):
 
+- Real webcam with global Python 3.15.1: **31.5 FPS** and **17.3 ms** recognition at 1280×720 through MSMF.
 - MediaPipe hand landmarker on a real 960×640 hand photo: **15.8 ms mean**, **17.2 ms p95** → ~63 FPS recognition headroom.
 - Demo session throughput including scene generation and tracking: **25.6 FPS** (150 frames in 5.86 s).
 - Web demo stream: 15 FPS target, 960×540 JPEG; browser canvas at display refresh rate.
