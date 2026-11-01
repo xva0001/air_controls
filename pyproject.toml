@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aircanvas"
+version = "1.0.0"
+description = "Gesture-controlled drawing, navigation and object tracking with shared PySide6 and web interfaces"
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+license = { text = "Academic project — see README for third-party notices" }
+authors = [{ name = "AirCanvas Project" }]
+keywords = ["computer-vision", "mediapipe", "pyside6", "fastapi", "gesture-control", "hci"]
+dependencies = [
+    "numpy>=1.24",
+    "opencv-contrib-python>=4.9",
+    "mediapipe>=0.10.14",
+    "PySide6>=6.7,<7",
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.30,<1",
+    "Pillow>=10",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "playwright>=1.45", "ruff>=0.6"]
+web = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.30,<1"]
+desktop = ["PySide6>=6.7,<7"]
+
+[project.scripts]
+aircanvas-desktop = "aircanvas.desktop.app:run"
+aircanvas-web = "aircanvas.web.server:main"
+
+[tool.setuptools]
+packages = ["aircanvas", "aircanvas.desktop", "aircanvas.web"]
+
+[tool.setuptools.package-data]
+aircanvas = ["web/static/*", "web/static/**/*", "assets/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"
+norecursedirs = ["pytest-cache-files-*", ".venv", "data", "docs"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+exclude = [".venv", ".uv-cache", "data", "docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S110", "RUF"]
+ignore = ["E501", "B008", "UP042", "RUF100", "RUF046", "S110"]

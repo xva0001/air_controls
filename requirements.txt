@@ -1,0 +1,10 @@
+# Runtime dependencies for AirCanvas.
+# Tested with Python 3.13 on Windows 11 and the versions resolved below.
+numpy>=1.24
+opencv-contrib-python>=4.9
+mediapipe>=0.10.14
+PySide6>=6.7,<7
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+Pillow>=10
+httpx>=0.27

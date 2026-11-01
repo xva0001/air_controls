@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#100f0e">
+  <meta name="description" content="AirCanvas — gesture-controlled drawing, navigation and object tracking in the browser.">
+  <title>AirCanvas — Gesture Interaction Studio</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#stageCanvas">Skip to the interaction stage</a>
+
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-pen" viewBox="0 0 24 24"><path d="M5.5 18.5l1.3-4.6L16.4 4.3a1.8 1.8 0 0 1 2.5 0l.8.8a1.8 1.8 0 0 1 0 2.5L10.1 17.2l-4.6 1.3Z"/><path d="M14.8 5.9l3.3 3.3M6.8 13.9l3.3 3.3"/></symbol>
+      <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M6.5 3.8v14.8l4.1-4 2.7 5.8 2.7-1.2-2.7-5.7 5.6-.8L6.5 3.8Z"/></symbol>
+      <symbol id="i-navigate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4M12 3l-2 2m2-2 2 2M12 21l-2-2m2 2 2-2M3 12l2-2m-2 2 2 2M21 12l-2-2m2 2-2 2"/></symbol>
+      <symbol id="i-track" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.2"/><circle cx="12" cy="12" r="1.8"/><path d="M12 2v3.3M12 18.7V22M2 12h3.3M18.7 12H22"/></symbol>
+      <symbol id="i-hand" viewBox="0 0 24 24"><path d="M7.4 11.5V5.9a1.4 1.4 0 0 1 2.8 0v4.7-7a1.4 1.4 0 0 1 2.8 0v7-5.3a1.4 1.4 0 0 1 2.8 0v6.2-3.1a1.4 1.4 0 0 1 2.8 0v5.2c0 4-2.8 6.7-6.8 6.7-3.5 0-4.7-1.6-6.9-5.3l-1.7-2.9a1.4 1.4 0 0 1 2.4-1.4l2.6 3.6"/></symbol>
+      <symbol id="i-undo" viewBox="0 0 24 24"><path d="M8.5 7H5v-3.5"/><path d="M5.5 7.2a7.5 7.5 0 1 1-1.2 8.4"/></symbol>
+      <symbol id="i-redo" viewBox="0 0 24 24"><path d="M15.5 7H19v-3.5"/><path d="M18.5 7.2a7.5 7.5 0 1 0 1.2 8.4"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 6.5h16M9.5 6.5V4h5v2.5M6.5 6.5l1 13h9l1-13M10 10v6M14 10v6"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v11m0 0 4.2-4.2M12 14 7.8 9.8M4 18.5h16"/></symbol>
+      <symbol id="i-camera" viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="11" rx="2.5"/><path d="m16 11 5-3v9l-5-3"/><circle cx="9.5" cy="12.5" r="2.4"/></symbol>
+      <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.7 2.7 0 0 1 5.2 1c0 1.7-2.7 2-2.7 3.7"/><circle cx="12" cy="17.3" r=".8" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.8"/></symbol>
+      <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 2.5c.6 5.3 4.2 8.9 9.5 9.5-5.3.6-8.9 4.2-9.5 9.5-.6-5.3-4.2-8.9-9.5-9.5 5.3-.6 8.9-4.2 9.5-9.5Z"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="11" rx="2.5"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10"/></symbol>
+      <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+      <symbol id="i-overlay" viewBox="0 0 24 24"><rect x="3" y="4" width="13" height="9" rx="1.5"/><rect x="8" y="10" width="13" height="9" rx="1.5"/></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2.2" fill="var(--bg)"/><circle cx="15" cy="12" r="2.2" fill="var(--bg)"/><circle cx="8" cy="17" r="2.2" fill="var(--bg)"/></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m7 9.5 5 5 5-5"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m0 0-5-5m5 5-5 5"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5 20 12 7 19.5Z"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand" aria-label="AirCanvas">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 36 36"><path d="M20 29c3-3 10-10 5-19-8 4-13 15-9 19" /><path d="M14 20c4 0 8-1 11-4"/></svg>
+        </span>
+        <span class="brand-text"><strong>AirCanvas</strong><small>GESTURE STUDIO</small></span>
+      </div>
+
+      <nav class="mode-switch" role="tablist" aria-label="Interaction mode">
+        <button class="mode-tab active" data-mode="screen" role="tab" aria-selected="true" aria-controls="stageCanvas">
+          <svg class="icon"><use href="#i-monitor"/></svg> Screen
+        </button>
+        <button class="mode-tab" data-mode="mirror" role="tab" aria-selected="false" aria-controls="stageCanvas">
+          <svg class="icon"><use href="#i-camera"/></svg> Mirror
+        </button>
+      </nav>
+
+      <div class="topbar-spacer"></div>
+      <div class="pill" id="cameraPill" data-tone="muted"><span class="dot"></span><span id="cameraPillText">CAMERA OFF</span></div>
+      <div class="pill" id="gesturePill" data-tone="muted"><span class="dot"></span><span id="gesturePillText">NO HAND</span></div>
+      <button class="icon-btn mobile-controls" id="toolsToggle" aria-label="Open tools" title="Tools">
+        <svg class="icon"><use href="#i-pen"/></svg>
+      </button>
+      <button class="icon-btn mobile-controls" id="controlsToggle" aria-label="Open controls" title="Controls">
+        <svg class="icon"><use href="#i-settings"/></svg>
+      </button>
+      <button class="icon-btn" id="helpBtn" aria-label="Help and gesture guide" title="Help (F1)">
+        <svg class="icon"><use href="#i-help"/></svg>
+      </button>
+      <span class="connection" id="connectionStatus" title="Local Python service connection"><span class="dot"></span><span>LOCAL</span></span>
+    </header>
+
+    <main class="workspace">
+      <aside class="panel left-panel" id="leftPanel" aria-label="Drawing tools and workspace">
+        <div class="panel-heading">
+          <span class="eyebrow">WORKSPACE</span>
+          <div class="panel-heading-row">
+            <h2>Tools</h2>
+            <button class="icon-btn panel-close" id="closeTools" aria-label="Close tools panel"><svg class="icon"><use href="#i-close"/></svg></button>
+          </div>
+        </div>
+
+        <div class="tool-list" id="toolList" role="toolbar" aria-label="Interaction tools">
+          <button class="tool-btn active" data-tool="draw">
+            <svg class="icon"><use href="#i-pen"/></svg><span>Draw</span><kbd>D</kbd>
+          </button>
+          <button class="tool-btn" data-tool="navigate">
+            <svg class="icon"><use href="#i-navigate"/></svg><span>Navigate</span><kbd>N</kbd>
+          </button>
+          <button class="tool-btn" data-tool="mouse">
+            <svg class="icon"><use href="#i-cursor"/></svg><span>Mouse</span><kbd>M</kbd>
+          </button>
+          <button class="tool-btn mirror-tool" data-tool="annotate">
+            <svg class="icon"><use href="#i-pen"/></svg><span>Annotate</span><kbd>A</kbd>
+          </button>
+          <button class="tool-btn mirror-tool" data-tool="track">
+            <svg class="icon"><use href="#i-track"/></svg><span>Track</span><kbd>T</kbd>
+          </button>
+        </div>
+        <p class="hint" id="toolHint">Point and draw on the canvas.</p>
+
+        <div class="divider"></div>
+
+        <section class="control-section" id="brushSection" aria-labelledby="brushHeading">
+          <div class="section-heading">
+            <span class="eyebrow" id="brushHeading">BRUSH</span>
+            <code id="brushColorLabel">#FF6B57</code>
+          </div>
+          <div class="palette" role="group" aria-label="Brush colour">
+            <button class="swatch active" data-color="#ff6b57" style="--swatch:#ff6b57" aria-label="Coral"></button>
+            <button class="swatch" data-color="#f6c453" style="--swatch:#f6c453" aria-label="Amber"></button>
+            <button class="swatch" data-color="#71d6b5" style="--swatch:#71d6b5" aria-label="Mint"></button>
+            <button class="swatch" data-color="#5aa9e6" style="--swatch:#5aa9e6" aria-label="Sky"></button>
+            <button class="swatch" data-color="#c79bff" style="--swatch:#c79bff" aria-label="Violet"></button>
+            <button class="swatch" data-color="#f4f1e8" style="--swatch:#f4f1e8" aria-label="Chalk"></button>
+          </div>
+          <label class="range-row" for="brushWidth">
+            <span>Brush size</span><output id="brushWidthValue">5 px</output>
+          </label>
+          <input id="brushWidth" type="range" min="2" max="18" step="1" value="5" aria-label="Brush size">
+        </section>
+
+        <div class="setting-row">
+          <div><span class="setting-title">Smart shapes</span><span class="setting-desc">Correct deliberate circles into clean vector circles.</span></div>
+          <button class="switch on" id="smartShapes" role="switch" aria-checked="true" aria-label="Smart shape correction"><span></span></button>
+        </div>
+
+        <div class="divider"></div>
+
+        <section class="control-section" id="surfaceSection" aria-labelledby="surfaceHeading">
+          <span class="eyebrow" id="surfaceHeading">DRAWING SURFACE</span>
+          <div class="surface-segment" role="group" aria-label="Drawing surface">
+            <button class="active" data-surface="canvas">Built-in</button>
+            <button data-surface="overlay" disabled title="Transparent desktop overlay is unavailable in browsers">Desktop <svg class="icon tiny"><use href="#i-lock"/></svg></button>
+          </div>
+          <p class="hint">A browser cannot create a click-through window above other apps. Use the desktop build for that surface. <a href="#" id="securityLink">Why?</a></p>
+        </section>
+
+        <div class="divider"></div>
+
+        <span class="eyebrow">QUICK ACTIONS</span>
+        <div class="quick-actions">
+          <button class="quick-btn" data-action="undo" aria-label="Undo"><svg class="icon"><use href="#i-undo"/></svg><span>Undo</span></button>
+          <button class="quick-btn" data-action="redo" aria-label="Redo"><svg class="icon"><use href="#i-redo"/></svg><span>Redo</span></button>
+          <button class="quick-btn" data-action="clear" aria-label="Clear drawing"><svg class="icon"><use href="#i-trash"/></svg><span>Clear</span></button>
+          <button class="quick-btn" data-action="export" aria-label="Export PNG"><svg class="icon"><use href="#i-download"/></svg><span>Export</span></button>
+        </div>
+
+        <div class="spacer"></div>
+        <div class="tip-card">
+          <span class="tip-label"><svg class="icon tiny"><use href="#i-spark"/></svg> HOLD STEADY</span>
+          <p>Pose stabilisation prevents accidental strokes and clicks. Release a pose to re-arm.</p>
+        </div>
+      </aside>
+
+      <section class="center-column" aria-label="Interaction stage">
+        <header class="stage-heading">
+          <div>
+            <span class="eyebrow" id="stageEyebrow">SCREEN MODE</span>
+            <h1 id="stageTitle">Built-in canvas</h1>
+            <p id="stageDescription">Point to draw. Smart shapes can clean up circles.</p>
+          </div>
+          <div class="stage-chips">
+            <span class="pill" id="smartPill" data-tone="mint"><span class="dot"></span><span>SMART SHAPES ON</span></span>
+            <span class="pill" id="trackingPill" data-tone="coral"><span class="dot"></span><span>LIVE</span></span>
+          </div>
+        </header>
+
+        <div class="stage-shell" id="stageShell">
+          <canvas id="stageCanvas" tabindex="0" aria-label="AirCanvas interaction stage: draw with a fingertip or the mouse">
+            Your browser cannot display the AirCanvas canvas. Use the keyboard shortcuts and controls instead.
+          </canvas>
+          <div class="stage-chips-overlay" aria-live="polite">
+            <span class="canvas-chip" id="stageModeChip">SCREEN / DRAW</span>
+            <span class="canvas-chip warning" id="demoChip" hidden>SIMULATED</span>
+            <span class="canvas-chip right" id="trackChip" hidden>0 TRACKED</span>
+          </div>
+
+          <div class="start-panel" id="startPanel" role="dialog" aria-labelledby="startPanelTitle" aria-modal="false">
+            <div class="start-icon"><svg class="icon"><use href="#i-camera"/></svg></div>
+            <h2 id="startPanelTitle">Bring your own camera</h2>
+            <p id="startPanelBody">AirCanvas uses your webcam locally. The browser will ask for permission; frames are sent only to this Python service on your computer.</p>
+            <div class="start-actions">
+              <button class="btn primary" id="startCameraBtn"><svg class="icon"><use href="#i-camera"/></svg> Enable camera</button>
+              <button class="btn" id="startDemoBtn"><svg class="icon"><use href="#i-spark"/></svg> Simulated feed</button>
+              <button class="btn ghost" id="startMouseBtn">Draw with mouse</button>
+            </div>
+            <p class="fineprint">No camera? You can still draw with the mouse and try every reversible action.</p>
+          </div>
+
+          <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+        </div>
+
+        <footer class="stage-footer">
+          <span class="status-inline"><span class="dot" id="statusDot"></span><span id="statusMessage" aria-live="polite">Connecting to local service…</span></span>
+          <span class="shortcut-hint" id="shortcutHint">1 / 2 mode · D draw · N navigate · M mouse · Ctrl+Z undo</span>
+          <span class="mono" id="stageStats">— fps · — ms</span>
+        </footer>
+      </section>
+
+      <aside class="panel inspector" id="inspector" aria-label="Gesture and system controls">
+        <div class="inspector-header">
+          <div>
+            <span class="eyebrow">LIVE INPUT</span>
+            <h2>Hand &amp; gesture</h2>
+          </div>
+          <button class="icon-btn panel-close" id="closeInspector" aria-label="Close controls panel"><svg class="icon"><use href="#i-close"/></svg></button>
+        </div>
+
+        <div class="hand-card">
+          <canvas id="handCanvas" width="300" height="146" aria-label="Live hand landmark preview"></canvas>
+          <div class="hand-state">
+            <strong id="gestureName">No hand</strong>
+            <span class="pill" id="confidencePill" data-tone="muted"><span class="dot"></span><span>CONF —</span></span>
+          </div>
+          <div class="metrics">
+            <div class="metric"><strong id="metricFps">—</strong><span>FPS</span></div>
+            <div class="metric"><strong id="metricLatency">—</strong><span>INFERENCE</span></div>
+            <div class="metric"><strong id="metricPinch">—</strong><span>PINCH</span></div>
+          </div>
+        </div>
+
+        <section class="inspector-section" id="trackingSection" hidden>
+          <div class="section-heading">
+            <div><span class="eyebrow">MIRROR MODE</span><h3>Tracked objects</h3></div>
+            <button class="icon-btn small" id="clearTracks" aria-label="Remove all tracking markers" title="Remove all markers"><svg class="icon"><use href="#i-trash"/></svg></button>
+          </div>
+          <div id="trackList" class="track-list"></div>
+          <p class="hint" id="trackEmpty">No objects tracked. Choose Track and draw a loop around an object.</p>
+        </section>
+
+        <div class="divider"></div>
+
+        <section class="inspector-section">
+          <div class="section-heading"><div><span class="eyebrow">MAPPING</span><h3>Gesture bindings</h3></div></div>
+          <div class="mapping-grid">
+            <label>Draw / annotate<select id="mapDraw"></select></label>
+            <label>Left click<select id="mapClick"></select></label>
+            <label>Right click<select id="mapRight"></select></label>
+            <label>Navigation arm<select id="mapNav"></select></label>
+            <label>Page swipe<select id="mapPage"></select></label>
+          </div>
+        </section>
+
+        <div class="divider"></div>
+
+        <section class="inspector-section">
+          <div class="section-heading"><div><span class="eyebrow">TUNING</span><h3>Sensitivity &amp; stability</h3></div></div>
+          <label class="range-row" for="pinchSensitivity"><span>Pinch sensitivity</span><output id="pinchSensitivityValue">100%</output></label>
+          <input id="pinchSensitivity" type="range" min="55" max="180" value="100" aria-label="Pinch sensitivity">
+          <label class="range-row" for="cursorSmoothing"><span>Pointer smoothing</span><output id="cursorSmoothingValue">62%</output></label>
+          <input id="cursorSmoothing" type="range" min="0" max="95" value="62" aria-label="Pointer smoothing">
+          <label class="range-row" for="navHold"><span>Navigation hold</span><output id="navHoldValue">280 ms</output></label>
+          <input id="navHold" type="range" min="120" max="900" step="10" value="280" aria-label="Navigation hold time">
+          <label class="range-row" for="poseStability"><span>Pose stability</span><output id="poseStabilityValue">5 frames</output></label>
+          <input id="poseStability" type="range" min="3" max="11" value="5" aria-label="Pose stability frames">
+        </section>
+
+        <div class="divider"></div>
+
+        <section class="inspector-section">
+          <div class="section-heading"><div><span class="eyebrow">SYSTEM</span><h3>Camera &amp; control</h3></div></div>
+          <div class="setting-row compact">
+            <div><span class="setting-title">Mirror camera</span><span class="setting-desc">Selfie view; overlays share the same origin.</span></div>
+            <button class="switch on" id="mirrorCamera" role="switch" aria-checked="true" aria-label="Mirror camera"><span></span></button>
+          </div>
+          <div class="setting-row compact">
+            <div><span class="setting-title">Show landmarks</span><span class="setting-desc">Hand skeleton over the feed.</span></div>
+            <button class="switch on" id="showLandmarks" role="switch" aria-checked="true" aria-label="Show hand landmarks"><span></span></button>
+          </div>
+          <div class="setting-row compact">
+            <div><span class="setting-title">Left-handed layout</span><span class="setting-desc">Move controls to the left side.</span></div>
+            <button class="switch" id="leftHanded" role="switch" aria-checked="false" aria-label="Left-handed layout"><span></span></button>
+          </div>
+          <label class="select-row">Dominant hand
+            <select id="dominantHand">
+              <option value="auto">Auto detect</option>
+              <option value="right">Right hand</option>
+              <option value="left">Left hand</option>
+            </select>
+          </label>
+          <label class="select-row">Camera device
+            <select id="cameraDevice"><option value="">Default camera</option></select>
+          </label>
+          <div class="native-note">
+            <svg class="icon"><use href="#i-lock"/></svg>
+            <p><strong>Desktop-only:</strong> OS cursor, system navigation and a transparent overlay are blocked by browser security. Use the PySide6 build for native control.</p>
+          </div>
+        </section>
+
+        <div class="spacer"></div>
+        <p class="service-note">Shared Python core · frames never leave this machine</p>
+      </aside>
+    </main>
+
+    <footer class="statusbar">
+      <div class="statusbar-left"><span class="eyebrow">AIRCANVAS</span><span class="version">v1.0</span></div>
+      <span class="statusbar-center">Local service: <code id="serviceUrl">ws://127.0.0.1/ws</code></span>
+      <span class="statusbar-right"><span id="serviceState">connecting</span> · keyboard + mouse fallback</span>
+    </footer>
+  </div>
+
+  <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+
+  <dialog id="welcomeDialog" class="modal">
+    <div class="modal-card welcome">
+      <div class="modal-top">
+        <div class="brand small"><span class="brand-mark"><svg viewBox="0 0 36 36"><path d="M20 29c3-3 10-10 5-19-8 4-13 15-9 19"/><path d="M14 20c4 0 8-1 11-4"/></svg></span><span class="brand-text"><strong>AirCanvas</strong><small>GESTURE STUDIO</small></span></div>
+        <button class="icon-btn" id="closeWelcome" aria-label="Close welcome"><svg class="icon"><use href="#i-close"/></svg></button>
+      </div>
+      <span class="eyebrow">WELCOME</span>
+      <h2>Touch the air.<br>Draw the world.</h2>
+      <p class="lede">One shared gesture engine, two ways to work. Use your webcam for direct manipulation, or explore every feature with a deterministic simulated feed.</p>
+      <div class="welcome-cards">
+        <div class="welcome-card"><span class="badge coral"><svg class="icon"><use href="#i-pen"/></svg></span><strong>Point to draw</strong><p>Hold your index finger steady. Deliberate circles are corrected automatically.</p></div>
+        <div class="welcome-card"><span class="badge mint"><svg class="icon"><use href="#i-track"/></svg></span><strong>Loop to track</strong><p>In Mirror Mode, circle an object and hold still. Markers follow it through the feed.</p></div>
+        <div class="welcome-card"><span class="badge amber"><svg class="icon"><use href="#i-navigate"/></svg></span><strong>Swipe with intent</strong><p>Hold an open palm, then swipe. A cooldown prevents accidental navigation.</p></div>
+      </div>
+      <p class="privacy"><span class="dot mint"></span> Local by design · keyboard + mouse fallback at every step</p>
+      <div class="welcome-actions">
+        <button class="btn" id="welcomeMouse">Draw with mouse</button>
+        <button class="btn" id="welcomeDemo"><svg class="icon"><use href="#i-spark"/></svg> Explore simulated feed</button>
+        <button class="btn primary" id="welcomeCamera"><svg class="icon"><use href="#i-camera"/></svg> Enable camera</button>
+      </div>
+      <p class="fineprint">Camera access requires localhost or HTTPS and your permission. Images are processed in memory by the local service.</p>
+    </div>
+  </dialog>
+
+  <dialog id="helpDialog" class="modal">
+    <div class="modal-card help">
+      <div class="modal-top">
+        <span class="eyebrow">FIELD GUIDE</span>
+        <button class="icon-btn" id="closeHelp" aria-label="Close help"><svg class="icon"><use href="#i-close"/></svg></button>
+      </div>
+      <h2>How AirCanvas works</h2>
+      <p class="lede">Five short gestures, all stabilised over several frames. Nothing fires on a single noisy frame, and every action has a keyboard or mouse alternative.</p>
+      <div class="help-grid">
+        <div class="welcome-card"><span class="badge coral"><svg class="icon"><use href="#i-pen"/></svg></span><strong>Point</strong><p>Draw and annotate. Hold steady to begin.</p></div>
+        <div class="welcome-card"><span class="badge mint"><svg class="icon"><use href="#i-cursor"/></svg></span><strong>Pinch</strong><p>Left click; keep pinched to drag.</p></div>
+        <div class="welcome-card"><span class="badge amber"><svg class="icon"><use href="#i-hand"/></svg></span><strong>Open palm</strong><p>Arm navigation, then swipe.</p></div>
+        <div class="welcome-card"><span class="badge blue"><svg class="icon"><use href="#i-track"/></svg></span><strong>Two fingers</strong><p>Right click or previous / next page.</p></div>
+      </div>
+      <div class="help-columns">
+        <section><h3>KEYBOARD</h3><dl>
+          <dt>1 / 2</dt><dd>Screen / Mirror mode</dd>
+          <dt>D / N / M</dt><dd>Draw / Navigate / Mouse</dd>
+          <dt>A / T</dt><dd>Annotate / Track</dd>
+          <dt>Ctrl+Z</dt><dd>Undo</dd>
+          <dt>Ctrl+Shift+Z</dt><dd>Redo</dd>
+          <dt>Ctrl+S</dt><dd>Export PNG</dd>
+          <dt>F1</dt><dd>This guide</dd>
+        </dl></section>
+        <section><h3>BROWSER LIMITS</h3><ul>
+          <li>No OS cursor, global shortcuts or transparent desktop layer.</li>
+          <li>Camera needs a user gesture and localhost / HTTPS.</li>
+          <li>Background tabs may throttle camera processing.</li>
+          <li>Desktop build integrates those native features.</li>
+        </ul></section>
+      </div>
+      <div class="modal-actions"><button class="btn primary" id="helpDone">Got it</button></div>
+    </div>
+  </dialog>
+
+  <dialog id="securityDialog" class="modal">
+    <div class="modal-card help">
+      <div class="modal-top"><span class="eyebrow">BROWSER SECURITY</span><button class="icon-btn" id="closeSecurity" aria-label="Close security explanation"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <h2>Why some desktop features stop at the browser</h2>
+      <p class="lede">A web page is sandboxed by design. These restrictions are real limits, not missing AirCanvas code.</p>
+      <ul class="security-list">
+        <li><strong>Camera permission.</strong> <code>getUserMedia</code> requires localhost or HTTPS and an explicit click.</li>
+        <li><strong>No transparent desktop overlay.</strong> A page cannot paint over other applications or become click-through.</li>
+        <li><strong>No OS input.</strong> JavaScript cannot move the system cursor or inject global keyboard shortcuts.</li>
+        <li><strong>Tab lifecycle.</strong> Background throttling can pause camera frames and recognition.</li>
+      </ul>
+      <p>The PySide6 desktop build provides native mouse, system navigation and a transparent overlay using a separate consent gate. Both interfaces share the same gesture, drawing and tracking core.</p>
+      <div class="modal-actions"><button class="btn primary" id="securityDone">Understood</button></div>
+    </div>
+  </dialog>
+
+  <video id="cameraVideo" autoplay playsinline muted class="hidden-video" aria-hidden="true"></video>
+  <canvas id="captureCanvas" class="hidden-video" aria-hidden="true"></canvas>
+  <canvas id="exportCanvas" class="hidden-video" aria-hidden="true"></canvas>
+
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>

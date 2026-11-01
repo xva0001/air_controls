@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.uv-cache/
+.cache/
+.pytest_cache/
+.ruff_cache/
+pytest-cache-files-*/
+*.egg-info/
+build/
+dist/
+
+# Runtime data, browser profiles and generated test images
+data/
+*.log
+*.tmp
+*.task.tmp
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
